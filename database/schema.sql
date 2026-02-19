@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS inventory (
     medicine_name VARCHAR(255) NOT NULL,
     category VARCHAR(100),
     company VARCHAR(100),
+    barcode VARCHAR(100) UNIQUE,
     batch_no VARCHAR(50),
     expiry_date DATE,
     stock_qty INT DEFAULT 0,

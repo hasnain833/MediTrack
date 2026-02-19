@@ -1,0 +1,37 @@
+{
+    "store": {
+        "name": "D. CHEMIST",
+        "tagline": "Your Health, Our Priority",
+        "address": "123 Pharmacy St, District Karachi\nSindh, Pakistan - 74000\n+92-321-1234567 | care@dchemist.com",
+        "color": "#0F172A",
+        "tagline_color": "#64748B",
+        "address_color": "#64748B"
+    },
+    "theme": {
+        "primary": "#2C7878",
+        "accent": "#0F172A",
+        "background": "#FFFFFF",
+        "text": "#0F172A",
+        "font_family": "Inter"
+    },
+    "table": {
+        "header_bg": "rgba(44, 120, 120, 0.08)",
+        "header_text": "#2C7878",
+        "row_border": "#F1F5F9",
+        "columns": [
+            "ITEM",
+            "BATCH",
+            "EXPIRY",
+            "QTY",
+            "RATE",
+            "GST%",
+            "AMOUNT"
+        ]
+    },
+    "footer": {
+        "show_qr": true,
+        "show_bank": true,
+        "thanks_text": "Thank you for your visit!",
+        "thanks_color": "#2C7878"
+    }
+}

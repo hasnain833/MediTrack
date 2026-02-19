@@ -39,15 +39,21 @@ class Sparkline(QWidget):
         painter.drawPath(path)
 
 class GlassCard(QFrame):
-    def __init__(self, title, value, trend, trend_val, spark_data, color="#2C7878", parent=None):
+    def __init__(self, title, value, trend, trend_val, spark_data, color="#2C7878", callback=None, parent=None):
         super().__init__(parent)
+        self.callback = callback
+        if callback:
+            self.setCursor(Qt.PointingHandCursor)
         self.setFixedWidth(230)
         self.setFixedHeight(110)
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: white;
-                border: 1px solid #E2E8F0;
-                border-radius: 12px;
+                border: 1px solid #F1F5F9;
+                border-radius: 16px;
+            }}
+            QFrame:hover {{
+                border-color: {color};
             }}
         """)
         
@@ -80,6 +86,11 @@ class GlassCard(QFrame):
         
         self.spark = Sparkline(spark_data, color, self)
         layout.addWidget(self.spark)
+
+    def mousePressEvent(self, event):
+        if self.callback:
+            self.callback()
+        super().mousePressEvent(event)
 
 class SectionHeader(QWidget):
     def __init__(self, title, parent=None):
@@ -357,6 +368,26 @@ class MainWindow(QWidget):
         profile_section.addWidget(avatar)
         
         header_layout.addLayout(profile_section)
+
+        logout_btn = QPushButton("🚪")
+        logout_btn.setFixedSize(38, 38)
+        logout_btn.setToolTip("Logout")
+        logout_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 16px;
+                border: 1px solid #F1F5F9;
+                border-radius: 19px;
+                background: #F8FAFC;
+                color: #EF4444;
+            }
+            QPushButton:hover {
+                background: #FEF2F2;
+                border-color: #FEE2E2;
+            }
+        """)
+        logout_btn.clicked.connect(self.handle_logout)
+        header_layout.addWidget(logout_btn)
+
         main_layout.addWidget(self.header)
 
         scroll = QScrollArea()
@@ -379,10 +410,11 @@ class MainWindow(QWidget):
         welcome_row.addLayout(welcome_box)
         welcome_row.addStretch()
         
+        self.content_layout.addLayout(welcome_row)
+        
         export_btn = QPushButton("Export Data ↓")
         export_btn.setStyleSheet(f"background: white; border: 1px solid #E2E8F0; padding: 10px 20px; border-radius: 8px; font-weight: bold; color: {self.primary};")
         welcome_row.addWidget(export_btn)
-        self.content_layout.addLayout(welcome_row)
 
         # 2. Operations Hub (Quick Actions) - MOVED TO TOP
         self.content_layout.addWidget(SectionHeader("Operations Hub"))
@@ -391,10 +423,11 @@ class MainWindow(QWidget):
         actions_layout.setSpacing(15)
         
         quick_actions = [
-            ("💳 Billing", "#2C7878", "Generate invoices and settle payments", self.open_billing),
-            ("📦 Inventory", "#3B82F6", "Manage stock levels and medicines", self.open_inventory),
-            ("👥 Patients", "#8B5CF6", "Access patient history and records", self.open_patients),
-            ("📊 Reports", "#F59E0B", "View sales and business analytics", self.open_reports)
+            ("💳 Billing", "#0EA5E9", "Generate invoices and settle payments", self.open_billing),
+            ("📦 Inventory", "#6366F1", "Manage stock levels and medicines", self.open_inventory),
+            ("🎨 Designer", "#EC4899", "Customize bill print template", self.open_designer),
+            ("💰 Financials", "#10B981", "Detailed sales overview and reports", self.open_financials),
+            ("📊 Reports", "#F59E0B", "View low stock and inventory reports", self.open_low_stock_report)
         ]
         
         for text, color, desc, callback in quick_actions:
@@ -455,14 +488,14 @@ class MainWindow(QWidget):
             low_stock = 0
 
         metrics = [
-            ("Today's Revenue", f"Rs.{stats['revenue']:,.0f}", "↑", "0%", [0, stats['revenue']], "#2C7878"),
-            ("Orders Processed", str(stats['orders']), "↑", "0%", [0, stats['orders']], "#3B82F6"),
-            ("Low Stock Items", str(low_stock), "!", "Alert", [0, low_stock], "#F59E0B"),
-            ("Registered Staff", "2", "→", "Stable", [1, 2, 2, 2], "#8B5CF6")
+            ("Today's Revenue", f"Rs.{stats['revenue']:,.0f}", "↑", "0%", [0, stats['revenue']], "#10B981", self.open_financials),
+            ("Orders Processed", str(stats['orders']), "↑", "0%", [0, stats['orders']], "#6366F1", self.open_financials),
+            ("Low Stock Items", str(low_stock), "!", "Alert", [0, low_stock], "#F59E0B", self.open_low_stock_report),
+            ("Registered Staff", "2", "→", "Stable", [1, 2, 2, 2], "#8B5CF6", None)
         ]
         
-        for title, value, sign, p_val, chart_data, color in metrics:
-            card = MetricCard(title, value, sign, p_val, chart_data, color)
+        for title, value, sign, p_val, chart_data, color, callback in metrics:
+            card = GlassCard(title, value, sign, p_val, chart_data, color, callback)
             cards_layout.addWidget(card)
         self.content_layout.addLayout(cards_layout)
         
@@ -542,13 +575,68 @@ class MainWindow(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Navigation Error", f"Could not launch Inventory module.\n\nError: {e}")
 
-    def open_patients(self):
-        print("DEBUG: Opening Patient Records...")
-        QMessageBox.information(self, "Coming Soon", "The Patient Records module is scheduled for the next update.")
+    def open_designer(self):
+        print("DEBUG: Opening Bill Template Designer...")
+        try:
+            from gui.bill_designer_window import BillDesignerWindow
+            self.designer_win = BillDesignerWindow(self)
+            self.designer_win.show()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "Navigation Error", f"Could not launch Designer module.\n\nError: {e}")
+
+    def open_financials(self):
+        print("DEBUG: Opening Financial Overview...")
+        try:
+            from gui.financial_window import FinancialOverviewWindow
+            self.fin_win = FinancialOverviewWindow(self)
+            self.fin_win.show()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "Navigation Error", f"Could not launch Financials module.\n\nError: {e}")
+
+    def open_low_stock_report(self):
+        print("DEBUG: Opening Low Stock Report...")
+        try:
+            from database.models import Medicine
+            from gui.report_preview_window import ReportPreviewWindow
+            
+            data = Medicine.get_low_stock_items()
+            if not data:
+                QMessageBox.information(self, "Report", "All stock levels are currently healthy!")
+                return
+                
+            self.report_win = ReportPreviewWindow(
+                "Low Stock Medicine Report", 
+                ["Medicine Name", "Category", "Batch No", "Stock Qty", "Reorder Level"],
+                data,
+                self
+            )
+            self.report_win.show()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "Report Error", f"Could not generate report.\n\nError: {e}")
+
+    def handle_logout(self):
+        reply = QMessageBox.question(self, 'Logout', 'Are you sure you want to logout?',
+                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            print("DEBUG: Logging out...")
+            try:
+                from gui.login_window import LoginWindow
+                self.login_win = LoginWindow()
+                self.login_win.show()
+                self.close()
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                QMessageBox.critical(self, "Logout Error", f"Could not return to login screen.\n\nError: {e}")
 
     def open_reports(self):
-        print("DEBUG: Opening Yield Analytics...")
-        QMessageBox.information(self, "Coming Soon", "Advanced Analytics reports are coming in the Enterprise v2 release.")
+        self.open_low_stock_report()
 
     def create_container_card(self, title, fixed_h):
         card = QFrame()

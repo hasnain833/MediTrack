@@ -2,8 +2,8 @@ import sys
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QLineEdit, QPushButton, QFrame, QGraphicsDropShadowEffect, 
                              QScrollArea, QListWidget, QListWidgetItem,
-                             QApplication, QSpacerItem, QSizePolicy)
-from PySide6.QtCore import Qt, QSize
+                             QApplication, QSpacerItem, QSizePolicy, QMessageBox)
+from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import (QFont, QColor, QPainter, QPen, QBrush, QLinearGradient)
 from datetime import datetime
 
@@ -57,6 +57,7 @@ class ProductRow(QFrame):
             QPushButton { background: #F1F5F9; border-radius: 15px; font-weight: bold; border: none; color: #64748B; }
             QPushButton:hover { background: #2C7878; color: white; }
         """)
+        self.add_btn.clicked.connect(lambda: self.callback(self.name, self.price))
         layout.addWidget(self.add_btn)
 
     def mousePressEvent(self, event):
@@ -142,6 +143,11 @@ class BillingWindow(QWidget):
         self.accent = "#2C7878"
         self.cart_data = {} # {name: [price, qty]}
         
+        # Debounce timer for search
+        self.search_timer = QTimer()
+        self.search_timer.setSingleShot(True)
+        self.search_timer.timeout.connect(self.execute_search)
+
         self.init_ui()
 
     def init_ui(self):
@@ -151,7 +157,7 @@ class BillingWindow(QWidget):
 
         # 1. Left Panel (Inventory Row List) - 40%
         left_panel = QFrame()
-        left_panel.setStyleSheet("background: white; border-right: 1px solid #E2E8F0;")
+        left_panel.setStyleSheet("background: white; border-color: white; border-right: 1px solid #E2E8F0;")
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(25, 25, 25, 25)
         left_layout.setSpacing(20)
@@ -163,7 +169,7 @@ class BillingWindow(QWidget):
 
         # Search Bar
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search medicines...")
+        self.search_input.setPlaceholderText("Search name/brand...")
         self.search_input.setFixedHeight(45)
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
@@ -176,6 +182,7 @@ class BillingWindow(QWidget):
             }}
             QLineEdit:focus {{ border-color: {self.accent}; }}
         """)
+        self.search_input.textChanged.connect(self.handle_search_input)
         left_layout.addWidget(self.search_input)
 
         # Product List Area
@@ -187,17 +194,8 @@ class BillingWindow(QWidget):
         self.list_v.setContentsMargins(0, 0, 0, 0)
         self.list_v.setSpacing(0)
         
-        try:
-            from database.models import Medicine
-            self.products = Medicine.get_all()
-        except Exception as e:
-            print(f"Error fetching POS inventory: {e}")
-            self.products = []
-        
-        for prod in self.products:
-            row = ProductRow(prod['medicine_name'], prod['price'], prod['stock_qty'], self.add_to_cart)
-            row.inventory_id = prod['id'] # Store for later
-            self.list_v.addWidget(row)
+
+        self.products = []
         
         self.list_v.addStretch()
         scroll.setWidget(list_container)
@@ -225,8 +223,25 @@ class BillingWindow(QWidget):
         h_layout.addStretch()
         
         self.bill_no_lbl = QLabel(f"POS-{datetime.now().strftime('%H%M%S')}")
-        self.bill_no_lbl.setStyleSheet("color: #64748B; font-weight: bold;")
+        self.bill_no_lbl.setStyleSheet("color: #64748B; font-weight: bold; margin-right: 10px;")
         h_layout.addWidget(self.bill_no_lbl)
+
+        self.logout_btn = QPushButton("🚪 Logout")
+        self.logout_btn.setFixedSize(100, 35)
+        self.logout_btn.setStyleSheet("""
+            QPushButton {
+                background: #FEF2F2;
+                color: #EF4444;
+                border: 1px solid #FEE2E2;
+                border-radius: 6px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #FEE2E2;
+            }
+        """)
+        self.logout_btn.clicked.connect(self.handle_logout)
+        h_layout.addWidget(self.logout_btn)
         
         right_layout.addWidget(header)
 
@@ -255,12 +270,45 @@ class BillingWindow(QWidget):
         sum_l = QVBoxLayout(summary_card)
         sum_l.setSpacing(8)
         
-        sum1 = QHBoxLayout(); sum1.addWidget(QLabel("Subtotal")); self.sub_lbl = QLabel("Rs. 0.00"); self.sub_lbl.setAlignment(Qt.AlignRight); sum1.addStretch(); sum1.addWidget(self.sub_lbl)
-        sum2 = QHBoxLayout(); sum2.addWidget(QLabel("GST (12%)")); self.tax_lbl = QLabel("Rs. 0.00"); self.tax_lbl.setAlignment(Qt.AlignRight); sum2.addStretch(); sum2.addWidget(self.tax_lbl)
+        lbl_style = "color: #1E293B; font-weight: 500;"
+        val_style = "color: #1E293B; font-weight: bold;"
+
+        sum1 = QHBoxLayout()
+        ls1 = QLabel("Subtotal"); ls1.setStyleSheet(lbl_style); sum1.addWidget(ls1)
+        self.sub_lbl = QLabel("Rs. 0.00"); self.sub_lbl.setAlignment(Qt.AlignRight); self.sub_lbl.setStyleSheet(val_style); sum1.addStretch(); sum1.addWidget(self.sub_lbl)
+        
+        sum2 = QHBoxLayout()
+        ls2 = QLabel("GST (12%)"); ls2.setStyleSheet(lbl_style); sum2.addWidget(ls2)
+        self.tax_lbl = QLabel("Rs. 0.00"); self.tax_lbl.setAlignment(Qt.AlignRight); self.tax_lbl.setStyleSheet(val_style); sum2.addStretch(); sum2.addWidget(self.tax_lbl)
+        
+        # Discount Row
+        sum3 = QHBoxLayout()
+        ls3 = QLabel("Discount"); ls3.setStyleSheet(lbl_style); sum3.addWidget(ls3)
+        self.discount_input_percent = QLineEdit()
+        self.discount_input_percent.setPlaceholderText("%")
+        self.discount_input_percent.setFixedWidth(50)
+        self.discount_input_percent.setStyleSheet("border: 1px solid #E2E8F0; border-radius: 4px; padding: 2px; color: #1E293B;")
+        self.discount_input_percent.textChanged.connect(self.update_cart_ui)
+        
+        self.discount_input_fixed = QLineEdit()
+        self.discount_input_fixed.setPlaceholderText("Fixed Rs.")
+        self.discount_input_fixed.setFixedWidth(80)
+        self.discount_input_fixed.setStyleSheet("border: 1px solid #E2E8F0; border-radius: 4px; padding: 2px; color: #1E293B;")
+        self.discount_input_fixed.textChanged.connect(self.update_cart_ui)
+        
+        self.discount_lbl = QLabel("Rs. 0.00")
+        self.discount_lbl.setAlignment(Qt.AlignRight)
+        self.discount_lbl.setStyleSheet("color: #EF4444; font-weight: bold;")
+        
+        sum3.addWidget(self.discount_input_percent)
+        sum3.addWidget(self.discount_input_fixed)
+        sum3.addStretch()
+        sum3.addWidget(self.discount_lbl)
         
         total_row = QHBoxLayout()
         total_lbl = QLabel("Grand Total")
         total_lbl.setFont(QFont("Inter", 14, QFont.Bold))
+        total_lbl.setStyleSheet("color: #1E293B;")
         self.total_lbl = QLabel("Rs. 0.00")
         self.total_lbl.setFont(QFont("Inter", 24, QFont.Bold))
         self.total_lbl.setStyleSheet(f"color: {self.accent};")
@@ -268,6 +316,7 @@ class BillingWindow(QWidget):
         
         sum_l.addLayout(sum1)
         sum_l.addLayout(sum2)
+        sum_l.addLayout(sum3)
         line = QFrame(); line.setFixedHeight(1); line.setStyleSheet("background: #F1F5F9;"); sum_l.addWidget(line)
         sum_l.addLayout(total_row)
         footer_layout.addWidget(summary_card)
@@ -292,6 +341,55 @@ class BillingWindow(QWidget):
         right_layout.addWidget(footer)
         main_layout.addWidget(right_panel, 60)
 
+    def handle_search_input(self):
+        """Called on every keystroke, starts/restarts the debounce timer"""
+        term = self.search_input.text().strip()
+        if not term:
+            self.search_timer.stop()
+            self.update_inventory_list([])
+            return
+            
+        # If it's a long number, it's likely a barcode scan - handle immediately
+        if term.isdigit() and len(term) >= 8:
+            self.search_timer.stop()
+            self.execute_search()
+        else:
+            # Debounce for typing names
+            self.search_timer.start(150) # 150ms delay
+
+    def execute_search(self):
+        term = self.search_input.text().strip()
+        if not term: return
+
+        from database.models import Medicine
+        
+        # Barcode match (Full match)
+        if term.isdigit() and len(term) >= 8:
+            med = Medicine.find_by_barcode(term)
+            if med:
+                self.add_to_cart(med['medicine_name'], med['price'])
+                self.search_input.clear()
+                return
+
+        # Real-time Filter (DB Search)
+        results = Medicine.search(term)
+        self.update_inventory_list(results)
+
+    def refresh_inventory_list(self):
+        from database.models import Medicine
+        self.update_inventory_list(Medicine.get_all())
+
+    def update_inventory_list(self, products):
+        # Clear layout
+        while self.list_v.count() > 1:
+            item = self.list_v.takeAt(0)
+            if item.widget(): item.widget().deleteLater()
+            
+        for prod in products:
+            row = ProductRow(prod['medicine_name'], prod['price'], prod['stock_qty'], self.add_to_cart)
+            row.inventory_id = prod['id']
+            self.list_v.insertWidget(self.list_v.count()-1, row)
+
     def add_to_cart(self, name, price):
         if name in self.cart_data:
             self.cart_data[name][1] += 1
@@ -314,11 +412,26 @@ class BillingWindow(QWidget):
             self.cart_v.insertWidget(self.cart_v.count()-1, item_widget)
             subtotal += price * qty
             
-        tax = subtotal * 0.12
-        total = subtotal + tax
+        tax = subtotal * 0.12 # GST as configured (12%)
+        
+        # Discount Logic
+        discount = 0
+        try:
+            p_val = self.discount_input_percent.text()
+            if p_val:
+                discount += (subtotal * float(p_val) / 100)
+            
+            f_val = self.discount_input_fixed.text()
+            if f_val:
+                discount += float(f_val)
+        except: pass
+        
+        total = subtotal + tax - discount
+        if total < 0: total = 0
         
         self.sub_lbl.setText(f"Rs. {subtotal:.2f}")
         self.tax_lbl.setText(f"Rs. {tax:.2f}")
+        self.discount_lbl.setText(f"- Rs. {discount:.2f}")
         self.total_lbl.setText(f"Rs. {total:.2f}")
         self.complete_btn.setEnabled(len(self.cart_data) > 0)
 
@@ -328,14 +441,22 @@ class BillingWindow(QWidget):
             
             subtotal = sum(p[0]*p[1] for p in self.cart_data.values())
             tax = subtotal * 0.12
-            total = subtotal + tax
+            
+            discount = 0
+            try:
+                p_val = self.discount_input_percent.text()
+                if p_val: discount += (subtotal * float(p_val) / 100)
+                f_val = self.discount_input_fixed.text()
+                if f_val: discount += float(f_val)
+            except: pass
+            
+            total = subtotal + tax - discount
+            if total < 0: total = 0
             
             # 1. Handle Customer
             cust = Customer.find_or_create("Walk-in Customer")
             
             # 2. Prepare items for model (inventory_id, quantity, unit_price, subtotal)
-            # We need the inventory_id. I'll need to store it in self.cart_data or lookup it up.
-            # For this simple implementation, I'll lookup by name if id isn't in cart_data
             sale_items = []
             from database.models import Medicine
             all_meds = {m['medicine_name']: m['id'] for m in Medicine.get_all()}
@@ -347,8 +468,6 @@ class BillingWindow(QWidget):
 
             # 3. Create Sale in DB
             bill_no = self.bill_no_lbl.text()
-            # user_id is hardcoded to 1 (admin) for now, or 2 (cashier). 
-            # Ideally passed from login.
             user_id = 1 
             
             sale_id = Sale.create_transaction(
@@ -356,7 +475,8 @@ class BillingWindow(QWidget):
                 user_id, 
                 cust['id'], 
                 sale_items, 
-                (subtotal, tax, total)
+                (subtotal, tax, total),
+                discount=discount
             )
             
             # 4. Log Action
@@ -369,6 +489,7 @@ class BillingWindow(QWidget):
                 "customer_name": cust['name'],
                 "items": [(n, p[0], p[1], p[0]*p[1]) for n, p in self.cart_data.items()],
                 "subtotal": subtotal,
+                "discount": discount,
                 "gst": tax,
                 "total": total
             }
@@ -384,6 +505,21 @@ class BillingWindow(QWidget):
             import traceback
             print(traceback.format_exc())
             QMessageBox.critical(self, "Error", f"Failed to record sale: {e}")
+
+    def handle_logout(self):
+        reply = QMessageBox.question(self, 'Logout', 'Are you sure you want to logout?',
+                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            print("DEBUG: Cashier Logging out...")
+            try:
+                from gui.login_window import LoginWindow
+                self.login_win = LoginWindow()
+                self.login_win.show()
+                self.close()
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                QMessageBox.critical(self, "Logout Error", f"Could not return to login screen.\n\nError: {e}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

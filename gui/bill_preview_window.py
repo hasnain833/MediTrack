@@ -5,11 +5,13 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PySide6.QtCore import Qt, QSize, QRect
 from PySide6.QtGui import QFont, QColor, QPainter, QPen, QBrush, QPixmap, QPainterPath
 from datetime import datetime
+from services.template_service import TemplateService
 
 class InvoicePaper(QFrame):
     """Refined paper widget with subtle medical cross watermark"""
-    def __init__(self, parent=None):
+    def __init__(self, template=None, parent=None):
         super().__init__(parent)
+        self.template = template or TemplateService.load_template()
         self.setFixedSize(794, 1123)
         self.setStyleSheet("background-color: white;")
 
@@ -24,7 +26,8 @@ class InvoicePaper(QFrame):
         
         # Draw Medical Cross Watermark (5% Opacity)
         painter.setPen(Qt.NoPen)
-        color = QColor(44, 120, 120, 12) 
+        primary = QColor(self.template['theme']['primary'])
+        color = QColor(primary.red(), primary.green(), primary.blue(), 12) 
         painter.setBrush(color)
         
         size = 200
@@ -35,9 +38,10 @@ class InvoicePaper(QFrame):
 
 class InvoiceTable(QFrame):
     """Spreadsheet-style table for invoice items"""
-    def __init__(self, items, parent=None):
+    def __init__(self, items, template=None, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("background: white; border-top: 2px solid #2C7878;")
+        t = template or TemplateService.load_template()
+        self.setStyleSheet(f"background: white; border-top: 2px solid {t['theme']['primary']};")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -45,12 +49,12 @@ class InvoiceTable(QFrame):
         # Header Row
         header = QFrame()
         header.setFixedHeight(35)
-        header.setStyleSheet("background: rgba(44, 120, 120, 0.08); border-bottom: 1px solid #E2E8F0;")
+        header.setStyleSheet(f"background: {t['table']['header_bg']}; border-bottom: 1px solid {t['table']['row_border']};")
         h_layout = QHBoxLayout(header)
         h_layout.setContentsMargins(10, 0, 10, 0)
         
         cols = [
-            ("ITEM", 1), ("HSN", 0.5), ("BATCH", 0.7), 
+            ("ITEM", 1), ("BATCH", 0.7), 
             ("EXPIRY", 0.7), ("QTY", 0.4), ("RATE", 0.6), 
             ("GST%", 0.4), ("AMOUNT", 0.8)
         ]
@@ -58,11 +62,11 @@ class InvoiceTable(QFrame):
         for text, stretch in cols:
             lbl = QLabel(text)
             f = QFont()
-            f.setFamily("Inter")
+            f.setFamily(t['theme']['font_family'])
             f.setPointSize(8)
             f.setBold(True)
             lbl.setFont(f)
-            lbl.setStyleSheet("color: #2C7878; border: none;")
+            lbl.setStyleSheet(f"color: {t['table']['header_text']}; border: none;")
             h_layout.addWidget(lbl, stretch * 10)
             
         layout.addWidget(header)
@@ -71,12 +75,12 @@ class InvoiceTable(QFrame):
         for i, item in enumerate(items):
             row = QFrame()
             row.setFixedHeight(30)
-            row.setStyleSheet("border-bottom: 1px solid #F1F5F9;")
+            row.setStyleSheet(f"border-bottom: 1px solid {t['table']['row_border']};")
             r_layout = QHBoxLayout(row)
             r_layout.setContentsMargins(10, 0, 10, 0)
             
             vals = [
-                (item[0], 1), ("3004", 0.5), ("BT-12", 0.7), 
+                (item[0], 1), ("BT-12", 0.7), 
                 ("12/26", 0.7), (str(item[2]), 0.4), (f"{item[1]:.2f}", 0.6), 
                 ("12%", 0.4), (f"{item[3]:.2f}", 0.8)
             ]
@@ -84,7 +88,7 @@ class InvoiceTable(QFrame):
             for val, stretch in vals:
                 lbl = QLabel(val)
                 f_row = QFont()
-                f_row.setFamily("Inter")
+                f_row.setFamily(t['theme']['font_family'])
                 f_row.setPointSize(9)
                 lbl.setFont(f_row)
                 if stretch == 0.8: # Amount col
@@ -104,9 +108,11 @@ class BillPreviewWindow(QWidget):
         self.resize(850, 950)
         self.setStyleSheet("background-color: #F1F5F9;")
         self.bill_data = bill_data
+        self.template = TemplateService.load_template()
         self.init_ui()
 
     def init_ui(self):
+        t = self.template
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -123,34 +129,34 @@ class BillPreviewWindow(QWidget):
         # 1. Header Section
         header = QHBoxLayout()
         logo_v = QVBoxLayout()
-        name = QLabel("D. CHEMIST")
+        name = QLabel(t['store']['name'])
         f22b = QFont()
-        f22b.setFamily("Inter")
+        f22b.setFamily(t['theme']['font_family'])
         f22b.setPointSize(22)
         f22b.setBold(True)
         name.setFont(f22b)
-        name.setStyleSheet("color: #0F172A; letter-spacing: 2px;")
+        name.setStyleSheet(f"color: {t['store']['color']}; letter-spacing: 2px;")
         logo_v.addWidget(name)
         
-        tagline = QLabel("Your Health, Our Priority")
+        tagline = QLabel(t['store']['tagline'])
         f8b = QFont()
-        f8b.setFamily("Inter")
+        f8b.setFamily(t['theme']['font_family'])
         f8b.setPointSize(8)
         f8b.setBold(True)
         tagline.setFont(f8b)
-        tagline.setStyleSheet("color: #64748B; letter-spacing: 1px;")
+        tagline.setStyleSheet(f"color: {t['store']['tagline_color']}; letter-spacing: 1px;")
         logo_v.addWidget(tagline)
         header.addLayout(logo_v)
         
         header.addStretch()
         
-        addr = QLabel("123 Pharmacy St, District Karachi\nSindh, Pakistan - 74000\n+92-321-1234567 | care@dchemist.com")
+        addr = QLabel(t['store']['address'])
         f9 = QFont()
-        f9.setFamily("Inter")
+        f9.setFamily(t['theme']['font_family'])
         f9.setPointSize(9)
         addr.setFont(f9)
         addr.setAlignment(Qt.AlignRight)
-        addr.setStyleSheet("color: #64748B; line-height: 1.4;")
+        addr.setStyleSheet(f"color: {t['store']['address_color']}; line-height: 1.4;")
         header.addWidget(addr)
         paper_layout.addLayout(header)
 
@@ -159,15 +165,15 @@ class BillPreviewWindow(QWidget):
         title_v.setSpacing(5)
         title = QLabel("TAX INVOICE")
         f18l = QFont()
-        f18l.setFamily("Inter")
+        f18l.setFamily(t['theme']['font_family'])
         f18l.setPointSize(18)
         f18l.setWeight(QFont.Light)
         title.setFont(f18l)
-        title.setStyleSheet("color: #0F172A; letter-spacing: 4px; text-transform: uppercase;")
+        title.setStyleSheet(f"color: {t['theme']['accent']}; letter-spacing: 4px; text-transform: uppercase;")
         title_v.addWidget(title)
         
         underline = QFrame(); underline.setFixedHeight(1); underline.setFixedWidth(60)
-        underline.setStyleSheet("background: #2C7878;"); title_v.addWidget(underline)
+        underline.setStyleSheet(f"background: {t['theme']['primary']};"); title_v.addWidget(underline)
         paper_layout.addLayout(title_v)
 
         # 3. Metadata Boxes
@@ -178,11 +184,11 @@ class BillPreviewWindow(QWidget):
         cust_box = QFrame()
         cust_layout = QVBoxLayout(cust_box)
         lbl = QLabel("BILL TO")
-        f8ba = QFont(); f8ba.setFamily("Inter"); f8ba.setPointSize(8); f8ba.setBold(True)
+        f8ba = QFont(); f8ba.setFamily(t['theme']['font_family']); f8ba.setPointSize(8); f8ba.setBold(True)
         lbl.setFont(f8ba); lbl.setStyleSheet("color: #94A3B8;")
         cust_layout.addWidget(lbl)
         cust_name = QLabel(self.bill_data.get('customer_name', 'Walk-in Customer'))
-        f11b = QFont(); f11b.setFamily("Inter"); f11b.setPointSize(11); f11b.setBold(True)
+        f11b = QFont(); f11b.setFamily(t['theme']['font_family']); f11b.setPointSize(11); f11b.setBold(True)
         cust_name.setFont(f11b)
         cust_layout.addWidget(cust_name)
         cust_layout.addWidget(QLabel(f"PH: {self.bill_data.get('customer_phone', '--')}", styleSheet="color: #64748B;"))
@@ -195,8 +201,8 @@ class BillPreviewWindow(QWidget):
         inv_l.setSpacing(10)
         
         def add_meta_field(row, l, v):
-            kl = QLabel(l); f_k = QFont(); f_k.setFamily("Inter"); f_k.setPointSize(8); f_k.setBold(True); kl.setFont(f_k); kl.setStyleSheet("color: #64748B;")
-            vl = QLabel(v); f_v = QFont(); f_v.setFamily("Inter"); f_v.setPointSize(9); f_v.setBold(True); vl.setFont(f_v)
+            kl = QLabel(l); f_k = QFont(); f_k.setFamily(t['theme']['font_family']); f_k.setPointSize(8); f_k.setBold(True); kl.setFont(f_k); kl.setStyleSheet("color: #64748B;")
+            vl = QLabel(v); f_v = QFont(); f_v.setFamily(t['theme']['font_family']); f_v.setPointSize(9); f_v.setBold(True); vl.setFont(f_v)
             inv_l.addWidget(kl, row, 0); inv_l.addWidget(vl, row, 1)
 
         add_meta_field(0, "INVOICE NO", self.bill_data.get('bill_no', 'POS-0001'))
@@ -208,7 +214,7 @@ class BillPreviewWindow(QWidget):
         paper_layout.addSpacing(10)
 
         # 4. Main Table
-        self.table = InvoiceTable(self.bill_data.get('items', []))
+        self.table = InvoiceTable(self.bill_data.get('items', []), t)
         paper_layout.addWidget(self.table)
 
         # 5. Financial Summary (Flex Layout)
@@ -220,19 +226,20 @@ class BillPreviewWindow(QWidget):
         words_v = QVBoxLayout()
         words_v.addStretch()
         w_lbl = QLabel("TOTAL AMOUNT IN WORDS")
-        f8bw = QFont(); f8bw.setFamily("Inter"); f8bw.setPointSize(8); f8bw.setBold(True); w_lbl.setFont(f8bw); w_lbl.setStyleSheet("color: #94A3B8;")
+        f8bw = QFont(); f8bw.setFamily(t['theme']['font_family']); f8bw.setPointSize(8); f8bw.setBold(True); w_lbl.setFont(f8bw); w_lbl.setStyleSheet("color: #94A3B8;")
         words_v.addWidget(w_lbl)
         
         total_words = QLabel("Seventy-Two Rupees and Eighty Paise Only")
-        f10i = QFont(); f10i.setFamily("Inter"); f10i.setPointSize(10); f10i.setItalic(True)
+        f10i = QFont(); f10i.setFamily(t['theme']['font_family']); f10i.setPointSize(10); f10i.setItalic(True)
         total_words.setFont(f10i)
         total_words.setStyleSheet("color: #0F172A; border-bottom: 2px dotted #E2E8F0; padding-bottom: 10px;")
         words_v.addWidget(total_words)
         
-        bank = QLabel("BANK DETAILS\nStandard Chartered Bank | A/C: 1234567890\nIBAN: PK12 SCBL 0000 0001 2345 6789")
-        f7 = QFont(); f7.setFamily("Inter"); f7.setPointSize(7)
-        bank.setFont(f7); bank.setStyleSheet("color: #94A3B8; margin-top: 15px;")
-        words_v.addWidget(bank)
+        if t['footer'].get('show_bank', True):
+            bank = QLabel("BANK DETAILS\nStandard Chartered Bank | A/C: 1234567890\nIBAN: PK12 SCBL 0000 0001 2345 6789")
+            f7 = QFont(); f7.setFamily(t['theme']['font_family']); f7.setPointSize(7)
+            bank.setFont(f7); bank.setStyleSheet("color: #94A3B8; margin-top: 15px;")
+            words_v.addWidget(bank)
         flex_row.addLayout(words_v, 1)
         
         # Right: Totals Card
@@ -246,7 +253,7 @@ class BillPreviewWindow(QWidget):
         def sum_row(l, v, b=False, s=False):
             row = QHBoxLayout()
             kl = QLabel(l)
-            fk = QFont(); fk.setFamily("Inter"); fk.setPointSize(9); fk.setBold(b); kl.setFont(fk)
+            fk = QFont(); fk.setFamily(t['theme']['font_family']); fk.setPointSize(9); fk.setBold(b); kl.setFont(fk)
             vl = QLabel(f"Rs. {float(v):.2f}")
             fv = QFont(); fv.setFamily("JetBrains Mono"); fv.setPointSize(10 if not s else 14); fv.setBold(True)
             vl.setFont(fv)
@@ -256,19 +263,26 @@ class BillPreviewWindow(QWidget):
             return row
 
         sum_layout.addLayout(sum_row("Subtotal", self.bill_data.get('subtotal', 0)))
-        sum_layout.addLayout(sum_row("Taxable Value", self.bill_data.get('subtotal', 0)))
+        
+        discount = self.bill_data.get('discount', 0)
+        if discount > 0:
+            row_d = sum_row("Discount", discount)
+            row_d.itemAt(2).widget().setStyleSheet("color: #EF4444; font-weight: bold;")
+            sum_layout.addLayout(row_d)
+
+        sum_layout.addLayout(sum_row("Taxable Value", self.bill_data.get('subtotal', 0) - discount))
         
         gst_split = QHBoxLayout()
         cg = QVBoxLayout()
         cg.addWidget(QLabel("CGST (6%)", styleSheet="color: #64748B; font-size: 8px; font-weight: bold;"))
         vl_cg = QLabel(f"Rs. {self.bill_data.get('gst', 0)/2:.2f}")
-        fcg = QFont(); fcg.setFamily("Inter"); fcg.setPointSize(9); fcg.setBold(True); vl_cg.setFont(fcg)
+        fcg = QFont(); fcg.setFamily(t['theme']['font_family']); fcg.setPointSize(9); fcg.setBold(True); vl_cg.setFont(fcg)
         cg.addWidget(vl_cg)
         
         sg = QVBoxLayout()
         sg.addWidget(QLabel("SGST (6%)", styleSheet="color: #64748B; font-size: 8px; font-weight: bold;"))
         vl_sg = QLabel(f"Rs. {self.bill_data.get('gst', 0)/2:.2f}")
-        fsg = QFont(); fsg.setFamily("Inter"); fsg.setPointSize(9); fsg.setBold(True); vl_sg.setFont(fsg)
+        fsg = QFont(); fsg.setFamily(t['theme']['font_family']); fsg.setPointSize(9); fsg.setBold(True); vl_sg.setFont(fsg)
         sg.addWidget(vl_sg)
         
         gst_split.addLayout(cg); gst_split.addLayout(sg)
@@ -276,7 +290,7 @@ class BillPreviewWindow(QWidget):
         
         grand_box = QFrame()
         grand_box.setFixedHeight(60)
-        grand_box.setStyleSheet("background: #2C7878; border-radius: 8px;")
+        grand_box.setStyleSheet(f"background: {t['theme']['primary']}; border-radius: 8px;")
         gb_layout = QVBoxLayout(grand_box)
         gb_layout.addLayout(sum_row("GRAND TOTAL", self.bill_data.get('total', 0), True, True))
         sum_layout.addWidget(grand_box)
@@ -289,16 +303,17 @@ class BillPreviewWindow(QWidget):
         paper_layout.addStretch()
         footer = QHBoxLayout()
         
-        qr_place = QLabel("[QR CODE]")
-        qr_place.setFixedSize(60, 60)
-        qr_place.setStyleSheet("background: #F1F5F9; border-radius: 4px; color: #94A3B8; font-size: 8px;")
-        qr_place.setAlignment(Qt.AlignCenter)
-        footer.addWidget(qr_place)
+        if t['footer'].get('show_qr', True):
+            qr_place = QLabel("[QR CODE]")
+            qr_place.setFixedSize(60, 60)
+            qr_place.setStyleSheet("background: #F1F5F9; border-radius: 4px; color: #94A3B8; font-size: 8px;")
+            qr_place.setAlignment(Qt.AlignCenter)
+            footer.addWidget(qr_place)
         
         footer.addStretch()
         
-        thanks = QLabel("Thank you for your visit!")
-        thanks.setStyleSheet("color: #2C7878; font-family: 'Brush Script MT', 'Italianno', cursive; font-size: 24px; font-style: italic;")
+        thanks = QLabel(t['footer']['thanks_text'])
+        thanks.setStyleSheet(f"color: {t['footer']['thanks_color']}; font-family: 'Brush Script MT', 'Italianno', cursive; font-size: 24px; font-style: italic;")
         footer.addWidget(thanks)
         
         paper_layout.addLayout(footer)
@@ -320,7 +335,7 @@ class BillPreviewWindow(QWidget):
         
         p_btn = QPushButton("Print Receipt")
         p_btn.setFixedSize(160, 45)
-        p_btn.setStyleSheet("background: #2C7878; color: white; border-radius: 8px; font-weight: bold;")
+        p_btn.setStyleSheet(f"background: {t['theme']['primary']}; color: white; border-radius: 8px; font-weight: bold;")
         p_btn.clicked.connect(lambda: QMessageBox.information(self, "Print", "Dispatching to thermal printer..."))
         ff_layout.addStretch()
         ff_layout.addWidget(p_btn)
