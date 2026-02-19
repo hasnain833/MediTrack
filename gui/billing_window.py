@@ -1,171 +1,392 @@
-import tkinter as tk
-from tkinter import ttk
+import sys
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+                             QLineEdit, QPushButton, QFrame, QGraphicsDropShadowEffect, 
+                             QScrollArea, QListWidget, QListWidgetItem,
+                             QApplication, QSpacerItem, QSizePolicy)
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import (QFont, QColor, QPainter, QPen, QBrush, QLinearGradient)
 from datetime import datetime
 
-class BillingWindow(tk.Toplevel):
-    def __init__(self, master):
-        super().__init__(master)
-        self.title("MediTrack - Point of Sale")
-        self.geometry("1100x600")
-        self.resizable(False, False)
-        self.cart = []
-        self.current_bill_no = f"BILL{datetime.now().strftime('%Y%m%d')}001"
-        self.create_ui()
+class ProductRow(QFrame):
+    """List row for products in the POS"""
+    def __init__(self, name, price, stock, callback, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(65)
+        self.setCursor(Qt.PointingHandCursor)
+        self.name = name
+        self.price = float(price)
+        self.stock = int(stock)
+        self.callback = callback
+        
+        self.setStyleSheet("""
+            QFrame {
+                background: white;
+                border-bottom: 1px solid #F1F5F9;
+                border-radius: 0px;
+            }
+            QFrame:hover {
+                background: #F8FAFC;
+            }
+        """)
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(20, 0, 20, 0)
+        
+        name_info = QVBoxLayout()
+        name_info.setSpacing(2)
+        self.lbl_name = QLabel(name)
+        self.lbl_name.setFont(QFont("Inter", 11, QFont.Bold))
+        self.lbl_name.setStyleSheet("color: #0F172A; border: none;")
+        
+        self.lbl_stock = QLabel(f"In Stock: {stock}")
+        self.lbl_stock.setStyleSheet(f"color: {'#2C7878' if self.stock > 10 else '#EF4444'}; font-size: 10px; border: none;")
+        name_info.addWidget(self.lbl_name)
+        name_info.addWidget(self.lbl_stock)
+        layout.addLayout(name_info)
+        
+        layout.addStretch()
+        
+        self.lbl_price = QLabel(f"Rs. {self.price:.2f}")
+        self.lbl_price.setFont(QFont("Inter", 11, QFont.Bold))
+        self.lbl_price.setStyleSheet("color: #2C7878; border: none;")
+        layout.addWidget(self.lbl_price)
+        
+        self.add_btn = QPushButton("+")
+        self.add_btn.setFixedSize(30,30)
+        self.add_btn.setStyleSheet("""
+            QPushButton { background: #F1F5F9; border-radius: 15px; font-weight: bold; border: none; color: #64748B; }
+            QPushButton:hover { background: #2C7878; color: white; }
+        """)
+        layout.addWidget(self.add_btn)
 
-    def create_ui(self):
-        left_frame = tk.Frame(self, bg="#F5F5F5", width=480)
-        left_frame.pack(side="left", fill="y", padx=10, pady=10)
+    def mousePressEvent(self, event):
+        self.callback(self.name, self.price)
 
-        right_frame = tk.Frame(self, bg="#FFFFFF", width=720)
-        right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+class CartItem(QFrame):
+    """Stacked card for cart items"""
+    def __init__(self, name, price, qty, on_change, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(80)
+        self.name = name
+        self.price = price
+        self.qty = qty
+        self.on_change = on_change
+        
+        self.setStyleSheet("background: white; border-bottom: 1px solid #F1F5F9;")
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(15, 5, 15, 5)
+        
+        info = QVBoxLayout()
+        name_lbl = QLabel(name)
+        name_lbl.setFont(QFont("Inter", 11, QFont.Bold))
+        name_lbl.setStyleSheet("color: #0F172A;")
+        
+        price_lbl = QLabel(f"Rs. {price:.2f} / unit")
+        price_lbl.setStyleSheet("color: #64748B; font-size: 11px;")
+        info.addWidget(name_lbl)
+        info.addWidget(price_lbl)
+        layout.addLayout(info)
+        
+        layout.addStretch()
+        
+        # Stepper
+        stepper = QHBoxLayout()
+        btn_style = "background: #F1F5F9; border: none; border-radius: 12px; font-weight: bold; color: #475569;"
+        
+        minus = QPushButton("-")
+        minus.setFixedSize(28, 28)
+        minus.setStyleSheet(btn_style)
+        minus.clicked.connect(lambda: self.update_qty(-1))
+        
+        self.qty_lbl = QLabel(str(qty))
+        self.qty_lbl.setFixedWidth(30)
+        self.qty_lbl.setAlignment(Qt.AlignCenter)
+        self.qty_lbl.setFont(QFont("Inter", 11, QFont.Bold))
+        
+        plus = QPushButton("+")
+        plus.setFixedSize(28, 28)
+        plus.setStyleSheet(btn_style)
+        plus.clicked.connect(lambda: self.update_qty(1))
+        
+        stepper.addWidget(minus)
+        stepper.addWidget(self.qty_lbl)
+        stepper.addWidget(plus)
+        layout.addLayout(stepper)
+        
+        self.total_lbl = QLabel(f"Rs. {price*qty:.2f}")
+        self.total_lbl.setFixedWidth(100)
+        self.total_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.total_lbl.setFont(QFont("Inter", 12, QFont.Bold))
+        self.total_lbl.setStyleSheet("color: #0F172A;")
+        layout.addWidget(self.total_lbl)
 
-        self.create_left_panel(left_frame)
+    def update_qty(self, delta):
+        new_qty = self.qty + delta
+        if new_qty > 0:
+            self.qty = new_qty
+            self.qty_lbl.setText(str(self.qty))
+            self.total_lbl.setText(f"Rs. {self.price * self.qty:.2f}")
+            self.on_change()
+        elif new_qty == 0:
+            self.on_change(remove=self.name)
 
-        self.create_right_panel(right_frame)
+class BillingWindow(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent, Qt.Window)
+        self.setWindowTitle("MediTrack POS - Express Checkout")
+        self.resize(1100, 700) # Reduced height
+        self.setStyleSheet("background: #F8FAFC;")
+        
+        self.primary = "#0F172A"
+        self.accent = "#2C7878"
+        self.cart_data = {} # {name: [price, qty]}
+        
+        self.init_ui()
 
-    def create_left_panel(self, parent):
-        customer_frame = tk.Frame(parent, bg="#FFFFFF", relief="raised", bd=1)
-        customer_frame.pack(fill="x", pady=10, padx=10)
+    def init_ui(self):
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        tk.Label(customer_frame, text="Customer Details", font=('Inter', 14, 'bold'), bg="#FFFFFF").pack(pady=10)
+        # 1. Left Panel (Inventory Row List) - 40%
+        left_panel = QFrame()
+        left_panel.setStyleSheet("background: white; border-right: 1px solid #E2E8F0;")
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(25, 25, 25, 25)
+        left_layout.setSpacing(20)
 
-        tk.Label(customer_frame, text="Mobile Number", font=('Inter', 10), bg="#FFFFFF").pack(anchor="w", padx=10)
-        self.mobile_entry = tk.Entry(customer_frame, font=('Inter', 10))
-        self.mobile_entry.pack(fill="x", padx=10, pady=5)
+        title = QLabel("Pharmacy Inventory")
+        title.setFont(QFont("Inter", 14, QFont.Bold))
+        title.setStyleSheet(f"color: {self.primary};")
+        left_layout.addWidget(title)
 
-        tk.Label(customer_frame, text="Name", font=('Inter', 10), bg="#FFFFFF").pack(anchor="w", padx=10)
-        self.name_entry = tk.Entry(customer_frame, font=('Inter', 10))
-        self.name_entry.pack(fill="x", padx=10, pady=5)
+        # Search Bar
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search medicines...")
+        self.search_input.setFixedHeight(45)
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
+                background: white;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+                color: #0F172A;
+                padding-left: 15px;
+                font-size: 14px;
+            }}
+            QLineEdit:focus {{ border-color: {self.accent}; }}
+        """)
+        left_layout.addWidget(self.search_input)
 
-        tk.Label(customer_frame, text="Address", font=('Inter', 10), bg="#FFFFFF").pack(anchor="w", padx=10)
-        self.address_entry = tk.Entry(customer_frame, font=('Inter', 10))
-        self.address_entry.pack(fill="x", padx=10, pady=5)
-
-        search_frame = tk.Frame(parent, bg="#FFFFFF", relief="raised", bd=1)
-        search_frame.pack(fill="both", expand=True, pady=10, padx=10)
-
-        tk.Label(search_frame, text="Product Search", font=('Inter', 14, 'bold'), bg="#FFFFFF").pack(pady=10)
-
-        self.search_entry = tk.Entry(search_frame, font=('Inter', 10))
-        self.search_entry.pack(fill="x", padx=10, pady=5)
-        self.search_entry.bind("<KeyRelease>", self.search_products)
-
-        columns = ("Name", "Price", "Stock")
-        self.product_tree = ttk.Treeview(search_frame, columns=columns, show="headings", height=15)
-        for col in columns:
-            self.product_tree.heading(col, text=col)
-            self.product_tree.column(col, width=120, anchor="center")
-
-        self.products = [
-            ("Paracetamol", "10.00", "50"),
-            ("Ibuprofen", "15.00", "30"),
-            ("Vitamin C", "20.00", "100"),
-            ("Aspirin", "5.00", "25")
-        ]
+        # Product List Area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("background: transparent; border: none;")
+        list_container = QWidget()
+        self.list_v = QVBoxLayout(list_container)
+        self.list_v.setContentsMargins(0, 0, 0, 0)
+        self.list_v.setSpacing(0)
+        
+        try:
+            from database.models import Medicine
+            self.products = Medicine.get_all()
+        except Exception as e:
+            print(f"Error fetching POS inventory: {e}")
+            self.products = []
+        
         for prod in self.products:
-            self.product_tree.insert("", "end", values=prod)
+            row = ProductRow(prod['medicine_name'], prod['price'], prod['stock_qty'], self.add_to_cart)
+            row.inventory_id = prod['id'] # Store for later
+            self.list_v.addWidget(row)
+        
+        self.list_v.addStretch()
+        scroll.setWidget(list_container)
+        left_layout.addWidget(scroll)
 
-        self.product_tree.pack(fill="both", expand=True, padx=10, pady=5)
-        self.product_tree.bind("<Double-1>", self.add_to_cart)
+        main_layout.addWidget(left_panel, 40)
 
-    def create_right_panel(self, parent):
-        header_frame = tk.Frame(parent, bg="#FFFFFF")
-        header_frame.pack(fill="x", pady=10)
+        # 2. Right Panel (Cart & Checkout) - 60%
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(0)
 
-        tk.Label(header_frame, text=f"Bill No: {self.current_bill_no}", font=('Inter', 12, 'bold'), bg="#FFFFFF").pack(side="left", padx=10)
-        tk.Label(header_frame, text=f"Date: {datetime.now().strftime('%Y-%m-%d')}", font=('Inter', 12), bg="#FFFFFF").pack(side="right", padx=10)
+        # Header
+        header = QFrame()
+        header.setFixedHeight(70)
+        header.setStyleSheet("border-bottom: 1px solid #F1F5F9; background: white;")
+        h_layout = QHBoxLayout(header)
+        h_layout.setContentsMargins(30, 0, 30, 0)
+        
+        cart_title = QLabel("Billing Cart")
+        cart_title.setFont(QFont("Inter", 16, QFont.Bold))
+        h_layout.addWidget(cart_title)
+        
+        h_layout.addStretch()
+        
+        self.bill_no_lbl = QLabel(f"POS-{datetime.now().strftime('%H%M%S')}")
+        self.bill_no_lbl.setStyleSheet("color: #64748B; font-weight: bold;")
+        h_layout.addWidget(self.bill_no_lbl)
+        
+        right_layout.addWidget(header)
 
-        cart_frame = tk.Frame(parent, bg="#FFFFFF", relief="raised", bd=1)
-        cart_frame.pack(fill="both", expand=True, pady=10)
+        # Cart Items List
+        self.cart_scroll = QScrollArea()
+        self.cart_scroll.setWidgetResizable(True)
+        self.cart_scroll.setStyleSheet("border: none; background: white;")
+        self.cart_container = QWidget()
+        self.cart_container.setStyleSheet("background: white;")
+        self.cart_v = QVBoxLayout(self.cart_container)
+        self.cart_v.setSpacing(0)
+        self.cart_v.setContentsMargins(0, 0, 0, 0)
+        self.cart_v.addStretch()
+        self.cart_scroll.setWidget(self.cart_container)
+        right_layout.addWidget(self.cart_scroll)
 
-        tk.Label(cart_frame, text="Shopping Cart", font=('Inter', 14, 'bold'), bg="#FFFFFF").pack(pady=10)
+        # Summary & Checkout
+        footer = QFrame()
+        footer.setStyleSheet("background: #F8FAFC; border-top: 1px solid #E2E8F0;")
+        footer_layout = QVBoxLayout(footer)
+        footer_layout.setContentsMargins(30, 20, 30, 20)
+        footer_layout.setSpacing(15)
 
-        columns = ("Item", "Medicine", "Price", "Qty", "Total")
-        self.cart_tree = ttk.Treeview(cart_frame, columns=columns, show="headings", height=10)
-        for col in columns:
-            self.cart_tree.heading(col, text=col)
-            self.cart_tree.column(col, width=120, anchor="center")
+        summary_card = QFrame()
+        summary_card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #E2E8F0;")
+        sum_l = QVBoxLayout(summary_card)
+        sum_l.setSpacing(8)
+        
+        sum1 = QHBoxLayout(); sum1.addWidget(QLabel("Subtotal")); self.sub_lbl = QLabel("Rs. 0.00"); self.sub_lbl.setAlignment(Qt.AlignRight); sum1.addStretch(); sum1.addWidget(self.sub_lbl)
+        sum2 = QHBoxLayout(); sum2.addWidget(QLabel("GST (12%)")); self.tax_lbl = QLabel("Rs. 0.00"); self.tax_lbl.setAlignment(Qt.AlignRight); sum2.addStretch(); sum2.addWidget(self.tax_lbl)
+        
+        total_row = QHBoxLayout()
+        total_lbl = QLabel("Grand Total")
+        total_lbl.setFont(QFont("Inter", 14, QFont.Bold))
+        self.total_lbl = QLabel("Rs. 0.00")
+        self.total_lbl.setFont(QFont("Inter", 24, QFont.Bold))
+        self.total_lbl.setStyleSheet(f"color: {self.accent};")
+        total_row.addWidget(total_lbl); total_row.addStretch(); total_row.addWidget(self.total_lbl)
+        
+        sum_l.addLayout(sum1)
+        sum_l.addLayout(sum2)
+        line = QFrame(); line.setFixedHeight(1); line.setStyleSheet("background: #F1F5F9;"); sum_l.addWidget(line)
+        sum_l.addLayout(total_row)
+        footer_layout.addWidget(summary_card)
 
-        self.cart_tree.pack(fill="both", expand=True, padx=10, pady=5)
+        self.complete_btn = QPushButton("COMPLETE SALE →")
+        self.complete_btn.setFixedHeight(60)
+        self.complete_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 {self.accent}, stop:1 #1E5050);
+                color: white;
+                border-radius: 8px;
+                font-weight: bold;
+                font-size: 16px;
+            }}
+            QPushButton:hover {{ background: #1E5050; }}
+            QPushButton:disabled {{ background: #CBD5E1; color: #94A3B8; }}
+        """)
+        self.complete_btn.setEnabled(False)
+        self.complete_btn.clicked.connect(self.complete_sale)
+        footer_layout.addWidget(self.complete_btn)
 
-        totals_frame = tk.Frame(cart_frame, bg="#FFFFFF")
-        totals_frame.pack(fill="x", padx=10, pady=10)
+        right_layout.addWidget(footer)
+        main_layout.addWidget(right_panel, 60)
 
-        self.subtotal_label = tk.Label(totals_frame, text="Subtotal: Rs. 0.00", font=('Inter', 12), bg="#FFFFFF")
-        self.subtotal_label.pack(anchor="w")
-
-        tk.Label(totals_frame, text="Discount (%)", font=('Inter', 10), bg="#FFFFFF").pack(anchor="w", pady=5)
-        self.discount_entry = tk.Entry(totals_frame, font=('Inter', 10), width=10)
-        self.discount_entry.pack(anchor="w", pady=5)
-        self.discount_entry.bind("<KeyRelease>", self.update_totals)
-
-        self.gst_label = tk.Label(totals_frame, text="GST: Rs. 0.00", font=('Inter', 12), bg="#FFFFFF")
-        self.gst_label.pack(anchor="w")
-
-        self.total_label = tk.Label(totals_frame, text="Grand Total: Rs. 0.00", font=('Inter', 16, 'bold'), fg="#1976D2", bg="#FFFFFF")
-        self.total_label.pack(anchor="w", pady=10)
-
-        payment_frame = tk.Frame(parent, bg="#FFFFFF")
-        payment_frame.pack(fill="x", pady=10)
-
-        tk.Label(payment_frame, text="Payment Method", font=('Inter', 12), bg="#FFFFFF").pack(side="left", padx=10)
-        self.payment_var = tk.StringVar(value="Cash")
-        tk.OptionMenu(payment_frame, self.payment_var, "Cash", "Card", "UPI").pack(side="left", padx=10)
-
-        tk.Button(payment_frame, text="Generate Bill", font=('Inter', 14, 'bold'), bg="#4CAF50", fg="#FFFFFF", padx=20, command=self.generate_bill).pack(side="right", padx=10)
-
-    def search_products(self, event):
-        query = self.search_entry.get().lower()
-        self.product_tree.delete(*self.product_tree.get_children())
-        for prod in self.products:
-            if query in prod[0].lower():
-                self.product_tree.insert("", "end", values=prod)
-
-    def add_to_cart(self, event):
-        selected = self.product_tree.selection()
-        if selected:
-            item = self.product_tree.item(selected[0], "values")
-            name, price, stock = item
-            qty = 1  # Default qty
-            total = float(price) * qty
-            self.cart.append((name, price, str(qty), f"{total:.2f}"))
-            self.update_cart()
-
-    def update_cart(self):
-        self.cart_tree.delete(*self.cart_tree.get_children())
-        subtotal = 0
-        for i, item in enumerate(self.cart, 1):
-            self.cart_tree.insert("", "end", values=(i, *item))
-            subtotal += float(item[3])
-        discount = float(self.discount_entry.get() or 0) / 100
-        discounted = subtotal * (1 - discount)
-        gst = discounted * 0.12
-        total = discounted + gst
-        self.subtotal_label.config(text=f"Subtotal: Rs.{subtotal:.2f}")
-        self.gst_label.config(text=f"GST: Rs.{gst:.2f}")
-        self.total_label.config(text=f"Grand Total: Rs.{total:.2f}")
-
-    def generate_bill(self):
-        bill_data = {
-            'bill_no': self.current_bill_no,
-            'customer_name': self.name_entry.get(),
-            'customer_phone': self.mobile_entry.get(),
-            'customer_address': self.address_entry.get(),
-            'items': [self.cart[i] for i in range(len(self.cart))],
-            'subtotal': self.extract_value(self.subtotal_label.cget("text")),
-            'discount': float(self.discount_entry.get() or 0),
-            'gst': self.extract_value(self.gst_label.cget("text")),
-            'total': self.extract_value(self.total_label.cget("text"))
-        }
-
-        from gui.bill_preview_window import BillPreviewWindow
-        BillPreviewWindow(self, bill_data)
-
-    def extract_value(self, text):
-        if "Rs." in text:
-            return float(text.split("Rs.")[1].strip())
+    def add_to_cart(self, name, price):
+        if name in self.cart_data:
+            self.cart_data[name][1] += 1
         else:
-            return float(text.strip())
+            self.cart_data[name] = [price, 1]
+        self.update_cart_ui()
 
-    def update_totals(self, event):
-        self.update_cart()
+    def update_cart_ui(self, remove=None):
+        if remove:
+            if remove in self.cart_data: del self.cart_data[remove]
+            
+        # Clear layout
+        while self.cart_v.count() > 1:
+            item = self.cart_v.takeAt(0)
+            if item.widget(): item.widget().deleteLater()
+            
+        subtotal = 0
+        for name, (price, qty) in self.cart_data.items():
+            item_widget = CartItem(name, price, qty, self.update_cart_ui)
+            self.cart_v.insertWidget(self.cart_v.count()-1, item_widget)
+            subtotal += price * qty
+            
+        tax = subtotal * 0.12
+        total = subtotal + tax
+        
+        self.sub_lbl.setText(f"Rs. {subtotal:.2f}")
+        self.tax_lbl.setText(f"Rs. {tax:.2f}")
+        self.total_lbl.setText(f"Rs. {total:.2f}")
+        self.complete_btn.setEnabled(len(self.cart_data) > 0)
+
+    def complete_sale(self):
+        try:
+            from database.models import Sale, Customer, AuditLog
+            
+            subtotal = sum(p[0]*p[1] for p in self.cart_data.values())
+            tax = subtotal * 0.12
+            total = subtotal + tax
+            
+            # 1. Handle Customer
+            cust = Customer.find_or_create("Walk-in Customer")
+            
+            # 2. Prepare items for model (inventory_id, quantity, unit_price, subtotal)
+            # We need the inventory_id. I'll need to store it in self.cart_data or lookup it up.
+            # For this simple implementation, I'll lookup by name if id isn't in cart_data
+            sale_items = []
+            from database.models import Medicine
+            all_meds = {m['medicine_name']: m['id'] for m in Medicine.get_all()}
+            
+            for name, (price, qty) in self.cart_data.items():
+                med_id = all_meds.get(name)
+                if med_id:
+                    sale_items.append((med_id, qty, price, price * qty))
+
+            # 3. Create Sale in DB
+            bill_no = self.bill_no_lbl.text()
+            # user_id is hardcoded to 1 (admin) for now, or 2 (cashier). 
+            # Ideally passed from login.
+            user_id = 1 
+            
+            sale_id = Sale.create_transaction(
+                bill_no, 
+                user_id, 
+                cust['id'], 
+                sale_items, 
+                (subtotal, tax, total)
+            )
+            
+            # 4. Log Action
+            AuditLog.log(user_id, "SALE_COMPLETE", "BILLING", f"Processed Bill {bill_no}")
+
+            # 5. Show Preview
+            bill_data = {
+                "bill_no": bill_no,
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "customer_name": cust['name'],
+                "items": [(n, p[0], p[1], p[0]*p[1]) for n, p in self.cart_data.items()],
+                "subtotal": subtotal,
+                "gst": tax,
+                "total": total
+            }
+            from gui.bill_preview_window import BillPreviewWindow
+            self.preview = BillPreviewWindow(self, bill_data)
+            self.preview.show()
+            
+            # Clear cart on success
+            self.cart_data = {}
+            self.update_cart_ui()
+            
+        except Exception as e:
+            import traceback
+            print(traceback.format_exc())
+            QMessageBox.critical(self, "Error", f"Failed to record sale: {e}")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = BillingWindow()
+    window.show()
+    sys.exit(app.exec())

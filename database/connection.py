@@ -9,7 +9,7 @@ class Database:
 
     def connect(self):
         try:
-            self.connection = mysql.connector.connect(**self.config)
+            self.connection = mysql.connector.connect(**self.config, autocommit=True)
             if self.connection.is_connected():
                 return True
         except Error as e:
@@ -28,10 +28,10 @@ class Database:
         else:
             raise Exception("Failed to connect to database.")
 
-    def execute_query(self, query, params=None):
+    def execute_query(self, query, params=None, dictionary=False):
         if not self.connection or not self.connection.is_connected():
             self.connect()
-        cursor = self.connection.cursor()
+        cursor = self.connection.cursor(dictionary=dictionary)
         try:
             cursor.execute(query, params or ())
             return cursor
@@ -39,14 +39,14 @@ class Database:
             print(f"Error executing query: {e}")
             raise
 
-    def fetch_one(self, query, params=None):
-        cursor = self.execute_query(query, params)
+    def fetch_one(self, query, params=None, dictionary=True):
+        cursor = self.execute_query(query, params, dictionary=dictionary)
         result = cursor.fetchone()
         cursor.close()
         return result
 
-    def fetch_all(self, query, params=None):
-        cursor = self.execute_query(query, params)
+    def fetch_all(self, query, params=None, dictionary=True):
+        cursor = self.execute_query(query, params, dictionary=dictionary)
         result = cursor.fetchall()
         cursor.close()
         return result

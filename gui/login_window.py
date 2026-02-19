@@ -1,129 +1,299 @@
-import tkinter as tk
-from tkinter import messagebox
+import sys
 import bcrypt
+from PySide6.QtWidgets import (QApplication, QWidget, QLabel, QLineEdit, QPushButton, QCheckBox,
+                             QVBoxLayout, QHBoxLayout, QMessageBox, QFrame, QGraphicsDropShadowEffect)
+from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QPoint, QEasingCurve, QRect, QEvent
+from PySide6.QtGui import QFont, QColor, QLinearGradient, QPalette, QBrush, QPainter, QPen
 from database.connection import Database
 from gui.main_window import MainWindow
-from PIL import Image, ImageTk
 
-class LoginWindow:
+class MaterialInput(QWidget):
+    def __init__(self, label_text, is_password=False, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(60)
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 15, 0, 0)
+        self.layout.setSpacing(0)
+
+        self.label = QLabel(label_text, self)
+        self.label.setStyleSheet("color: #64748B; background: transparent;")
+        self.label.setFont(QFont("Inter", 11))
+        self.label.move(0, 25)
+        self.entry = QLineEdit(self)
+        self.entry.setStyleSheet("""
+            QLineEdit {
+                border: none;
+                border-bottom: 1px solid #E2E8F0;
+                background: transparent;
+                color: #1E293B;
+                padding-bottom: 5px;
+                font-size: 14px;
+            }
+        """)
+        if is_password:
+            self.entry.setEchoMode(QLineEdit.Password)
+        
+        self.layout.addWidget(self.entry)
+
+        self.focus_bar = QFrame(self)
+        self.focus_bar.setFixedHeight(2)
+        self.focus_bar.setStyleSheet("background-color: #2C7878;")
+        self.focus_bar.setFixedWidth(0)
+        self.focus_bar.move(0, 58)
+
+        self.label_anim = QPropertyAnimation(self.label, b"pos")
+        self.bar_anim = QPropertyAnimation(self.focus_bar, b"size")
+
+        self.entry.focused = False
+        self.entry.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if obj == self.entry:
+            if event.type() == QEvent.FocusIn:
+                self.on_focus_in()
+            elif event.type() == QEvent.FocusOut:
+                self.on_focus_out()
+        return super().eventFilter(obj, event)
+
+    def on_focus_in(self):
+        self.animate_label(True)
+        self.animate_bar(True)
+        self.entry.setStyleSheet("border: none; border-bottom: 1px solid #CBD5E1; background: transparent; color: #1E293B; padding-bottom: 5px; font-size: 14px;")
+
+    def on_focus_out(self):
+        if not self.entry.text():
+            self.animate_label(False)
+        self.animate_bar(False)
+        self.entry.setStyleSheet("border: none; border-bottom: 1px solid #E2E8F0; background: transparent; color: #1E293B; padding-bottom: 5px; font-size: 14px;")
+
+    def animate_label(self, up):
+        start = self.label.pos()
+        end = QPoint(0, 0) if up else QPoint(0, 25)
+        self.label_anim.setDuration(200)
+        self.label_anim.setStartValue(start)
+        self.label_anim.setEndValue(end)
+        self.label_anim.setEasingCurve(QEasingCurve.InOutQuad)
+        self.label_anim.start()
+        
+        self.label.setStyleSheet(f"color: {'#2C7878' if up else '#64748B'}; font-size: {'10px' if up else '14px'}; font-weight: {'bold' if up else 'normal'};")
+
+    def animate_bar(self, expand):
+        self.bar_anim.setDuration(250)
+        self.bar_anim.setStartValue(QSize(0, 2))
+        self.bar_anim.setEndValue(QSize(self.width(), 2) if expand else QSize(0, 2))
+        self.bar_anim.start()
+
+class ToggleSwitch(QCheckBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(45, 22)
+        self.setCursor(Qt.PointingHandCursor)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        painter.setPen(Qt.NoPen)
+        if self.isChecked():
+            painter.setBrush(QBrush(QColor("#2C7878")))
+        else:
+            painter.setBrush(QBrush(QColor("#CBD5E1")))
+        painter.drawRoundedRect(0, 0, self.width(), self.height(), 11, 11)
+        
+        painter.setBrush(QBrush(QColor("white")))
+        x = 25 if self.isChecked() else 3
+        painter.drawEllipse(x, 3, 16, 16)
+
+class LoginWindow(QWidget):
     def __init__(self):
-        self.root = tk.Tk()
-        self.root.title("MediTrack - Login")
-        self.root.geometry("800x600")
-        self.root.resizable(False, False)
-
-        # Set font
-        try:
-            self.title_font = ('Inter', 24, 'bold')
-            self.label_font = ('Inter', 12)
-            self.button_font = ('Inter', 14, 'bold')
-            self.version_font = ('Inter', 10)
-        except:
-            self.title_font = ('Helvetica', 24, 'bold')
-            self.label_font = ('Helvetica', 12)
-            self.button_font = ('Helvetica', 14, 'bold')
-            self.version_font = ('Helvetica', 10)
-
+        super().__init__()
+        self.setWindowTitle("MediTrack - Enterprise Login")
+        self.setFixedSize(1000, 600)
+        self.setStyleSheet("background-color: white;")
         self.db = Database()
-        self.draw_ui(800, 600)
-        self.root.bind('<Configure>', self.on_resize)
+        self.init_ui()
 
-    def draw_ui(self, width, height):
-        # Canvas for gradient background
-        self.canvas = tk.Canvas(self.root, width=width, height=height, highlightthickness=0, takefocus=0)
-        self.canvas.place(x=0, y=0, width=width, height=height)
+    def init_ui(self):
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # Create vertical gradient
-        for y in range(height):
-            factor = y / max(1, height - 1)
-            color = self.interpolate_color("#E3F2FD", "#FFFFFF", factor)
-            self.canvas.create_line(0, y, width, y, fill=color, width=1)
+        self.sidebar = QFrame()
+        self.sidebar.setFixedWidth(440)
+        self.sidebar.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0A2647, stop:1 #1B4D6E);
+            }
+        """)
+        sidebar_layout = QVBoxLayout(self.sidebar)
+        sidebar_layout.setContentsMargins(50, 100, 50, 50)
+        
+        self.app_name = QLabel("MediTrack")
+        self.app_name.setFont(QFont("Inter", 48, QFont.ExtraLight))
+        self.app_name.setStyleSheet("color: white;")
+        sidebar_layout.addWidget(self.app_name)
+        
+        self.tagline = QLabel("Enterprise Pharmacy Management")
+        self.tagline.setFont(QFont("Inter", 16, QFont.Light))
+        self.tagline.setStyleSheet("color: #CBD5E1;")
+        sidebar_layout.addWidget(self.tagline)
+        
+        sidebar_layout.addStretch()
+        
+        deco = QLabel("✚")
+        deco.setFont(QFont("Arial", 120))
+        deco.setStyleSheet("color: rgba(255, 255, 255, 0.05);")
+        sidebar_layout.addWidget(deco, 0, Qt.AlignCenter)
+        
+        main_layout.addWidget(self.sidebar)
 
-        # Centered white card with shadow (400x400)
-        card_w, card_h = 400, 400
-        card_x = (width - card_w) // 2
-        card_y = (height - card_h) // 2
-
-        # Shadow on canvas
-        shadow_offset = 5
-        self.canvas.create_rectangle(card_x + shadow_offset, card_y + shadow_offset,
-                                     card_x + card_w + shadow_offset, card_y + card_h + shadow_offset,
-                                     fill="#D0D0D0", outline="")
-
-        # Card frame on root
-        card_frame = tk.Frame(self.root, bg="#FFFFFF", bd=1, relief="solid")
-        card_frame.place(x=card_x, y=card_y, width=card_w, height=card_h)
-
-        # Logo and title
-        logo_label = tk.Label(card_frame, text="D.C", font=self.title_font, bg="#FFFFFF", fg="#1976D2")
-        logo_label.pack(pady=20)
-
-        # Username label
-        username_label = tk.Label(card_frame, text="Username", font=self.label_font, bg="#FFFFFF", fg="#424242")
-        username_label.pack(pady=5)
-
-        # Username entry
-        self.username_entry = tk.Entry(card_frame, font=('Inter', 12), bd=1, relief="sunken", bg="#FFFFFF",
-                                       insertbackground="#424242")
-        self.username_entry.pack(pady=5, padx=50, fill="x")
-        self.username_entry.focus_force()
-
-        # Password label
-        password_label = tk.Label(card_frame, text="Password", font=self.label_font, bg="#FFFFFF", fg="#424242")
-        password_label.pack(pady=5)
-
-        # Password entry
-        self.password_entry = tk.Entry(card_frame, font=('Inter', 12), bd=1, relief="sunken", bg="#FFFFFF",
-                                       insertbackground="#424242", show="*")
-        self.password_entry.pack(pady=5, padx=50, fill="x")
-
-        # Login button
-        self.login_btn = tk.Button(card_frame, text="Login", font=self.button_font, bg="#2196F3", fg="#FFFFFF",
-                                   relief="raised", bd=2, command=self.login)
-        self.login_btn.pack(pady=20, padx=50, fill="x")
-
-    def on_resize(self, event):
-        if event.widget == self.root:
-            # Store current input values
-            current_username = self.username_entry.get() if hasattr(self, 'username_entry') and self.username_entry.winfo_exists() else ""
-            current_password = self.password_entry.get() if hasattr(self, 'password_entry') and self.password_entry.winfo_exists() else ""
-            self.draw_ui(event.width, event.height)
-            # Restore input values
-            self.username_entry.delete(0, tk.END)
-            self.username_entry.insert(0, current_username)
-            self.password_entry.delete(0, tk.END)
-            self.password_entry.insert(0, current_password)
-
-    def interpolate_color(self, color1, color2, factor):
-        r1 = int(color1[1:3], 16)
-        g1 = int(color1[3:5], 16)
-        b1 = int(color1[5:7], 16)
-        r2 = int(color2[1:3], 16)
-        g2 = int(color2[3:5], 16)
-        b2 = int(color2[5:7], 16)
-        r = int(r1 + (r2 - r1) * factor)
-        g = int(g1 + (g2 - g1) * factor)
-        b = int(b1 + (b2 - b1) * factor)
-        return f"#{r:02x}{g:02x}{b:02x}"
+        right_container = QWidget()
+        right_layout = QVBoxLayout(right_container)
+        right_layout.setAlignment(Qt.AlignCenter)
+        
+        card = QFrame()
+        card.setFixedWidth(440)
+        card.setStyleSheet("background-color: white; border-radius: 12px;")
+        
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(40)
+        shadow.setXOffset(0)
+        shadow.setYOffset(10)
+        shadow.setColor(QColor(0, 0, 0, 40))
+        card.setGraphicsEffect(shadow)
+        
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(40, 50, 40, 50)
+        card_layout.setSpacing(25)
+        
+        welcome = QLabel("Welcome back")
+        welcome.setFont(QFont("Inter", 24, QFont.Bold))
+        welcome.setStyleSheet("color: #1E293B;")
+        card_layout.addWidget(welcome)
+        
+        subtext = QLabel("Please enter your account details.")
+        subtext.setFont(QFont("Inter", 11))
+        subtext.setStyleSheet("color: #64748B;")
+        card_layout.addWidget(subtext)
+        
+        self.user_input = MaterialInput("Username")
+        card_layout.addWidget(self.user_input)
+        
+        self.pass_input = MaterialInput("Password", is_password=True)
+        card_layout.addWidget(self.pass_input)
+        
+        remember_layout = QHBoxLayout()
+        self.remember_toggle = ToggleSwitch()
+        remember_layout.addWidget(self.remember_toggle)
+        remember_layout.addWidget(QLabel("Remember me", styleSheet="color: #64748B; font-size: 13px;"))
+        remember_layout.addStretch()
+        
+        forgot_btn = QPushButton("Forgot password?")
+        forgot_btn.setStyleSheet("color: #2C7878; font-weight: bold; border: none; background: transparent;")
+        remember_layout.addWidget(forgot_btn)
+        card_layout.addLayout(remember_layout)
+        
+        self.signin_btn = QPushButton("Sign In")
+        self.signin_btn.setFixedHeight(48)
+        self.signin_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2C7878, stop:1 #1E5F5F);
+                color: white;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 15px;
+            }
+            QPushButton:hover {
+                background: #1B4D4D;
+            }
+        """)
+        self.signin_btn.clicked.connect(self.login)
+        card_layout.addWidget(self.signin_btn)
+        
+        help_layout = QHBoxLayout()
+        help_layout.addWidget(QLabel("Need help?", styleSheet="color: #64748B;"))
+        
+        support_btn = QPushButton("Contact support")
+        support_btn.setStyleSheet("""
+            QPushButton {
+                color: #64748B;
+                border: 1px solid #E2E8F0;
+                padding: 5px 15px;
+                border-radius: 4px;
+                background: transparent;
+            }
+            QPushButton:hover {
+                background: #F8FAFC;
+            }
+        """)
+        help_layout.addWidget(support_btn)
+        card_layout.addLayout(help_layout)
+        
+        right_layout.addWidget(card)
+        main_layout.addWidget(right_container)
 
     def login(self):
-        username = self.username_entry.get()
-        password = self.password_entry.get()
-        print(f"Username: '{username}', Password: '{password}'")
-
+        username = self.user_input.entry.text().strip()
+        password = self.pass_input.entry.text().strip()
+        
         if not username or not password:
-            messagebox.showerror("Error", "Please enter both username and password.")
+            QMessageBox.warning(self, "Login Error", "Please enter both username and password.")
             return
-
+            
         try:
-            user = self.db.fetch_one("SELECT password_hash FROM users WHERE username = %s", (username,))
-            if user and bcrypt.checkpw(password.encode('utf-8'), user[0].encode('utf-8')):
-                self.root.destroy()
-                MainWindow(username).run()
+            from database.models import User
+            print(f"DEBUG: Login attempt for '{username}' (Password length: {len(password)})")
+            user = User.find_by_username(username)
+            
+            if user:
+                stored_hash = user['password_hash']
+                role = user['role']
+                print(f"DEBUG: Found user. Role: {role}")
+                
+                if isinstance(stored_hash, str):
+                    stored_hash = stored_hash.encode('utf-8')
+                
+                if bcrypt.checkpw(password.encode('utf-8'), stored_hash):
+                    print("DEBUG: Authentication successful.")
+                    self.accept_login(username, role)
+                else:
+                    print(f"DEBUG: Auth failed for '{username}'. Password did not match.")
+                    QMessageBox.critical(self, "Login Failed", "Invalid username or password.")
             else:
-                messagebox.showerror("Error", "Invalid username or password.")
+                print(f"DEBUG: User '{username}' not found.")
+                QMessageBox.critical(self, "Login Failed", "Invalid username or password.")
         except Exception as e:
-            messagebox.showerror("Error", f"Database error: {e}")
+            import traceback
+            print(f"CRITICAL: Login crash:\n{traceback.format_exc()}")
+            QMessageBox.critical(self, "Error", f"An internal error occurred: {e}")
 
-    def run(self):
-        self.root.mainloop()
+    def accept_login(self, username, role):
+        try:
+            print(f"DEBUG: accept_login called with role: {role}")
+            # Ensure role is string for comparison
+            if hasattr(role, 'decode'):
+                role = role.decode('utf-8')
+            
+            if role == "cashier":
+                print("DEBUG: Redirecting to Billing Terminal...")
+                from gui.billing_window import BillingWindow
+                self.bill_win = BillingWindow()
+                self.bill_win.show()
+            else:
+                print("DEBUG: Redirecting to MainWindow...")
+                self.main_window = MainWindow(username, role)
+                self.main_window.show()
+            
+            print("DEBUG: Closing Login Window...")
+            self.close()
+        except Exception as e:
+            import traceback
+            error_msg = traceback.format_exc()
+            print(f"DEBUG: Redirection Crash:\n{error_msg}")
+            QMessageBox.critical(self, "Redirection Error", f"Could not open application window.\n\n{e}")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = LoginWindow()
+    window.show()
+    sys.exit(app.exec())
