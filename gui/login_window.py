@@ -104,77 +104,82 @@ class ToggleSwitch(QCheckBox):
         x = 25 if self.isChecked() else 3
         painter.drawEllipse(x, 3, 16, 16)
 
+from utils.theme import Theme
+from gui.components import ModernButton, GlassCard
+
 class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("MediTrack - Enterprise Login")
-        self.setFixedSize(1000, 600)
-        self.setStyleSheet("background-color: white;")
+        self.setMinimumSize(900, 600)
+        self.resize(1000, 650)
+        self.setStyleSheet(f"background-color: {Theme.BG_MAIN.name()};")
         self.db = Database()
         self.init_ui()
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(100, self.start_entrance_animation)
 
     def init_ui(self):
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
+        # Left Sidebar (Visual Branding)
         self.sidebar = QFrame()
-        self.sidebar.setFixedWidth(440)
+        self.sidebar.setFixedWidth(400)
         self.sidebar.setStyleSheet("""
             QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0A2647, stop:1 #1B4D6E);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #1E293B, stop:1 #334155);
             }
         """)
         sidebar_layout = QVBoxLayout(self.sidebar)
-        sidebar_layout.setContentsMargins(50, 100, 50, 50)
+        sidebar_layout.setContentsMargins(50, 80, 50, 50)
+        
+        logo_label = QLabel("M")
+        logo_label.setFixedSize(60, 60)
+        logo_label.setAlignment(Qt.AlignCenter)
+        logo_label.setStyleSheet(f"background-color: {Theme.PRIMARY.name()}; color: white; border-radius: 12px; font-size: 32px; font-weight: bold;")
+        sidebar_layout.addWidget(logo_label)
+        
+        sidebar_layout.addSpacing(30)
         
         self.app_name = QLabel("MediTrack")
-        self.app_name.setFont(QFont("Inter", 48, QFont.ExtraLight))
+        self.app_name.setFont(Theme.get_font(42, QFont.ExtraLight))
         self.app_name.setStyleSheet("color: white;")
         sidebar_layout.addWidget(self.app_name)
         
-        self.tagline = QLabel("Enterprise Pharmacy Management")
-        self.tagline.setFont(QFont("Inter", 16, QFont.Light))
-        self.tagline.setStyleSheet("color: #CBD5E1;")
+        self.tagline = QLabel("The Future of Pharmacy\nManagement Systems")
+        self.tagline.setFont(Theme.get_font(18, QFont.Light))
+        self.tagline.setStyleSheet("color: #94A3B8;")
         sidebar_layout.addWidget(self.tagline)
         
         sidebar_layout.addStretch()
         
-        deco = QLabel("✚")
-        deco.setFont(QFont("Arial", 120))
-        deco.setStyleSheet("color: rgba(255, 255, 255, 0.05);")
-        sidebar_layout.addWidget(deco, 0, Qt.AlignCenter)
-        
         main_layout.addWidget(self.sidebar)
 
-        right_container = QWidget()
-        right_layout = QVBoxLayout(right_container)
+        # Right Container (Login Form)
+        self.right_container = QWidget()
+        right_layout = QVBoxLayout(self.right_container)
         right_layout.setAlignment(Qt.AlignCenter)
         
-        card = QFrame()
-        card.setFixedWidth(440)
-        card.setStyleSheet("background-color: white; border-radius: 12px;")
+        self.login_card = GlassCard()
+        self.login_card.setFixedWidth(440)
         
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(40)
-        shadow.setXOffset(0)
-        shadow.setYOffset(10)
-        shadow.setColor(QColor(0, 0, 0, 40))
-        card.setGraphicsEffect(shadow)
+        card_layout = QVBoxLayout(self.login_card)
+        card_layout.setContentsMargins(45, 50, 45, 50)
+        card_layout.setSpacing(20)
         
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(40, 50, 40, 50)
-        card_layout.setSpacing(25)
-        
-        welcome = QLabel("Welcome back")
-        welcome.setFont(QFont("Inter", 24, QFont.Bold))
-        welcome.setStyleSheet("color: #1E293B;")
+        welcome = QLabel("Welcome Back")
+        welcome.setFont(Theme.get_font(28, QFont.Bold))
+        welcome.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()};")
         card_layout.addWidget(welcome)
         
-        subtext = QLabel("Please enter your account details.")
-        subtext.setFont(QFont("Inter", 11))
-        subtext.setStyleSheet("color: #64748B;")
+        subtext = QLabel("Login to manage your pharmacy inventory")
+        subtext.setFont(Theme.get_font(14))
+        subtext.setStyleSheet(f"color: {Theme.TEXT_SUB.name()};")
         card_layout.addWidget(subtext)
+        
+        card_layout.addSpacing(10)
         
         self.user_input = MaterialInput("Username")
         card_layout.addWidget(self.user_input)
@@ -182,55 +187,32 @@ class LoginWindow(QWidget):
         self.pass_input = MaterialInput("Password", is_password=True)
         card_layout.addWidget(self.pass_input)
         
-        remember_layout = QHBoxLayout()
-        self.remember_toggle = ToggleSwitch()
-        remember_layout.addWidget(self.remember_toggle)
-        remember_layout.addWidget(QLabel("Remember me", styleSheet="color: #64748B; font-size: 13px;"))
-        remember_layout.addStretch()
+        card_layout.addSpacing(10)
         
-        forgot_btn = QPushButton("Forgot password?")
-        forgot_btn.setStyleSheet("color: #2C7878; font-weight: bold; border: none; background: transparent;")
-        remember_layout.addWidget(forgot_btn)
-        card_layout.addLayout(remember_layout)
-        
-        self.signin_btn = QPushButton("Sign In")
-        self.signin_btn.setFixedHeight(48)
-        self.signin_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2C7878, stop:1 #1E5F5F);
-                color: white;
-                border-radius: 6px;
-                font-weight: bold;
-                font-size: 15px;
-            }
-            QPushButton:hover {
-                background: #1B4D4D;
-            }
-        """)
+        self.signin_btn = ModernButton("Sign In")
         self.signin_btn.clicked.connect(self.login)
         card_layout.addWidget(self.signin_btn)
         
-        help_layout = QHBoxLayout()
-        help_layout.addWidget(QLabel("Need help?", styleSheet="color: #64748B;"))
+        forgot_btn = QPushButton("Forgot your password?")
+        forgot_btn.setFont(Theme.get_font(13))
+        forgot_btn.setStyleSheet(f"color: {Theme.PRIMARY.name()}; border: none; background: transparent;")
+        forgot_btn.setCursor(Qt.PointingHandCursor)
+        card_layout.addWidget(forgot_btn, 0, Qt.AlignCenter)
         
-        support_btn = QPushButton("Contact support")
-        support_btn.setStyleSheet("""
-            QPushButton {
-                color: #64748B;
-                border: 1px solid #E2E8F0;
-                padding: 5px 15px;
-                border-radius: 4px;
-                background: transparent;
-            }
-            QPushButton:hover {
-                background: #F8FAFC;
-            }
-        """)
-        help_layout.addWidget(support_btn)
-        card_layout.addLayout(help_layout)
-        
-        right_layout.addWidget(card)
-        main_layout.addWidget(right_container)
+        right_layout.addWidget(self.login_card)
+        main_layout.addWidget(self.right_container)
+
+    def start_entrance_animation(self):
+        # Capture current stable position after layout activation
+        # This prevents the jump from (0,0)
+        stable_pos = self.login_card.pos()
+        self.anim = QPropertyAnimation(self.login_card, b"pos")
+        self.anim.setDuration(800)
+        self.anim.setStartValue(QPoint(stable_pos.x(), stable_pos.y() + 80))
+        self.anim.setEndValue(stable_pos)
+        self.anim.setEasingCurve(QEasingCurve.OutCubic)
+        self.anim.start()
+
 
     def login(self):
         username = self.user_input.entry.text().strip()

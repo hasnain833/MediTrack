@@ -74,13 +74,17 @@ class Medicine(BaseModel):
 
 class Customer(BaseModel):
     @classmethod
-    def find_or_create(cls, name, phone=None):
+    def find_or_create(cls, name, phone=None, address=None):
         if phone:
             existing = cls.db.fetch_one("SELECT * FROM customers WHERE phone = %s", (phone,))
-            if existing: return existing
+            if existing:
+                # Update address if provided
+                if address and not existing.get('address'):
+                    cls.db.execute_query("UPDATE customers SET address = %s WHERE id = %s", (address, existing['id']))
+                return existing
         
-        query = "INSERT INTO customers (name, phone) VALUES (%s, %s)"
-        cursor = cls.db.execute_query(query, (name, phone))
+        query = "INSERT INTO customers (name, phone, address) VALUES (%s, %s, %s)"
+        cursor = cls.db.execute_query(query, (name, phone, address))
         cust_id = cursor.lastrowid
         cursor.close()
         return cls.db.fetch_one("SELECT * FROM customers WHERE id = %s", (cust_id,))

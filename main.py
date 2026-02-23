@@ -4,9 +4,15 @@ from gui.login_window import LoginWindow
 from database.connection import Database
 from utils.helpers import setup_logging
 
+from utils.theme import Theme
+
 def main():
     setup_logging()
     app = QApplication(sys.argv)
+    
+    # Global Font Selection
+    app.setFont(Theme.get_font(14))
+    
     try:
         db = Database()
         db.test_connection()
@@ -20,16 +26,30 @@ def main():
 
     window = LoginWindow()
     
-    # Global Style Override for Dialogs and Visibility
-    app.setStyleSheet("""
-        QWidget { color: #1E293B; }
-        QLabel { color: #1E293B; }
-        QMessageBox QLabel { color: #1E293B; min-width: 300px; }
-        QPushButton { color: #1E293B; }
-        QDialog { background-color: white; }
+    # Global Style Override
+    app.setStyleSheet(f"""
+        QWidget {{ border: none; outline: none; }}
+        QLabel {{ background: transparent; border: none; color: {Theme.TEXT_MAIN.name()}; }}
+        QMessageBox QLabel {{ min-width: 300px; }}
+        QDialog {{ background-color: white; border: none; }}
+        QScrollBar:vertical {{
+            border: none;
+            background: #F8FAFC;
+            width: 8px;
+            margin: 0;
+        }}
+        QScrollBar::handle:vertical {{
+            background: #CBD5E1;
+            min-height: 20px;
+            border-radius: 4px;
+        }}
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+            height: 0px;
+        }}
     """)
     
     window.show()
+
     sys.exit(app.exec())
 
 if __name__ == "__main__":

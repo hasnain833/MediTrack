@@ -14,6 +14,7 @@ from PySide6.QtGui import (QFont, QColor, QPainter, QPen, QBrush, QPixmap,
                           QPainterPath, QIcon, QDrag)
 from datetime import datetime
 
+from utils.theme import Theme
 from services.template_service import TemplateService
 from gui.bill_preview_window import InvoicePaper, InvoiceTable
 
@@ -35,14 +36,14 @@ class PropertyField(QFrame):
         if field_type == "text":
             self.input = QLineEdit(str(value))
             self.input.setFixedWidth(150)
-            self.input.setStyleSheet("border: 1px solid #E2E8F0; border-radius: 4px; padding: 4px;")
+            self.input.setStyleSheet(f"border: none; background: {Theme.BG_MAIN.name()}; border-radius: 4px; padding: 4px; color: {Theme.TEXT_MAIN.name()};")
             self.input.textChanged.connect(self.on_changed)
             layout.addWidget(self.input)
         elif field_type == "color":
             self.color_btn = QPushButton()
             self.color_btn.setFixedSize(30, 20)
             self.current_color = value
-            self.color_btn.setStyleSheet(f"background-color: {value}; border: 1px solid #E2E8F0; border-radius: 4px;")
+            self.color_btn.setStyleSheet(f"background-color: {value}; border: none; border-radius: 4px;")
             self.color_btn.clicked.connect(self.pick_color)
             layout.addWidget(self.color_btn)
         elif field_type == "bool":
@@ -72,14 +73,14 @@ class DraggableSection(QFrame):
         self.key = key
         self.setAcceptDrops(True)
         self.setFixedHeight(45)
-        self.setStyleSheet("""
-            QFrame {
-                background: #F8FAFC;
-                border: 1px solid #E2E8F0;
+        self.setStyleSheet(f"""
+            QFrame {{
+                background: {Theme.BG_MAIN.name()};
+                border: none;
                 border-radius: 6px;
                 padding-left: 10px;
-            }
-            QFrame:hover { border-color: #2C7878; background: white; }
+            }}
+            QFrame:hover {{ background: white; border: 1px solid {Theme.PRIMARY.name()}; }}
         """)
         
         layout = QHBoxLayout(self)
@@ -109,7 +110,7 @@ class BillDesignerWindow(QWidget):
         super().__init__(parent, Qt.Window)
         self.setWindowTitle("Bill Template Designer")
         self.resize(1200, 800) # Compact size
-        self.setStyleSheet("background-color: #F8FAFC;")
+        self.setStyleSheet(f"background-color: {Theme.BG_MAIN.name()};")
         
         self.current_template = TemplateService.load_template()
         self.zoom_level = 0.75 # Default zoomed out to fit better
@@ -123,7 +124,7 @@ class BillDesignerWindow(QWidget):
         # 1. Top Action Bar
         top_bar = QFrame()
         top_bar.setFixedHeight(65)
-        top_bar.setStyleSheet("background: white; border-bottom: 1px solid #E2E8F0;")
+        top_bar.setStyleSheet(f"background: white; border: none;")
         top_layout = QHBoxLayout(top_bar)
         top_layout.setContentsMargins(25, 0, 25, 0)
         
@@ -142,7 +143,7 @@ class BillDesignerWindow(QWidget):
         
         # Zoom Controls
         zoom_group = QFrame()
-        zoom_group.setStyleSheet("background: #F1F5F9; border-radius: 6px; border: 1px solid #E2E8F0;")
+        zoom_group.setStyleSheet(f"background: {Theme.BG_MAIN.name()}; border-radius: 6px; border: none;")
         zg_l = QHBoxLayout(zoom_group)
         zg_l.setContentsMargins(5, 5, 5, 5)
         
@@ -189,7 +190,7 @@ class BillDesignerWindow(QWidget):
         # --- LEFT PANEL (Settings) ---
         settings_panel = QFrame()
         settings_panel.setFixedWidth(380)
-        settings_panel.setStyleSheet("background: white; border-right: 1px solid #E2E8F0;")
+        settings_panel.setStyleSheet(f"background: white; border: none; border-right: 2px solid {Theme.BORDER.name()};")
         settings_layout = QVBoxLayout(settings_panel)
         settings_layout.setContentsMargins(15, 15, 15, 15)
         settings_layout.setSpacing(20)

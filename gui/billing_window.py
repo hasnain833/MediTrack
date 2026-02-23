@@ -7,26 +7,29 @@ from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import (QFont, QColor, QPainter, QPen, QBrush, QLinearGradient)
 from datetime import datetime
 
+from utils.theme import Theme
+from gui.components import ModernButton
+
 class ProductRow(QFrame):
     """List row for products in the POS"""
     def __init__(self, name, price, stock, callback, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(65)
+        self.setFixedHeight(70)
         self.setCursor(Qt.PointingHandCursor)
         self.name = name
         self.price = float(price)
         self.stock = int(stock)
         self.callback = callback
         
-        self.setStyleSheet("""
-            QFrame {
+        self.setStyleSheet(f"""
+            QFrame {{
                 background: white;
-                border-bottom: 1px solid #F1F5F9;
-                border-radius: 0px;
-            }
-            QFrame:hover {
-                background: #F8FAFC;
-            }
+                border: none;
+                border-radius: 12px;
+            }}
+            QFrame:hover {{
+                background: {Theme.BG_MAIN.name()};
+            }}
         """)
         
         layout = QHBoxLayout(self)
@@ -35,11 +38,12 @@ class ProductRow(QFrame):
         name_info = QVBoxLayout()
         name_info.setSpacing(2)
         self.lbl_name = QLabel(name)
-        self.lbl_name.setFont(QFont("Inter", 11, QFont.Bold))
-        self.lbl_name.setStyleSheet("color: #0F172A; border: none;")
+        self.lbl_name.setFont(Theme.get_font(12, QFont.Bold))
+        self.lbl_name.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()}; border: none;")
         
-        self.lbl_stock = QLabel(f"In Stock: {stock}")
-        self.lbl_stock.setStyleSheet(f"color: {'#2C7878' if self.stock > 10 else '#EF4444'}; font-size: 10px; border: none;")
+        self.lbl_stock = QLabel(f"Stock: {stock} units available")
+        stock_color = Theme.PRIMARY.name() if self.stock > 10 else Theme.ERROR.name()
+        self.lbl_stock.setStyleSheet(f"color: {stock_color}; font-size: 10px; border: none;")
         name_info.addWidget(self.lbl_name)
         name_info.addWidget(self.lbl_stock)
         layout.addLayout(name_info)
@@ -47,15 +51,24 @@ class ProductRow(QFrame):
         layout.addStretch()
         
         self.lbl_price = QLabel(f"Rs. {self.price:.2f}")
-        self.lbl_price.setFont(QFont("Inter", 11, QFont.Bold))
-        self.lbl_price.setStyleSheet("color: #2C7878; border: none;")
+        self.lbl_price.setFont(Theme.get_font(14, QFont.Bold))
+        self.lbl_price.setStyleSheet(f"color: {Theme.PRIMARY.name()}; border: none;")
         layout.addWidget(self.lbl_price)
         
         self.add_btn = QPushButton("+")
-        self.add_btn.setFixedSize(30,30)
-        self.add_btn.setStyleSheet("""
-            QPushButton { background: #F1F5F9; border-radius: 15px; font-weight: bold; border: none; color: #64748B; }
-            QPushButton:hover { background: #2C7878; color: white; }
+        self.add_btn.setFixedSize(36, 36)
+        self.add_btn.setStyleSheet(f"""
+            QPushButton {{ 
+                background: {Theme.BG_MAIN.name()}; 
+                border-radius: 18px; 
+                font-weight: bold; 
+                border: none; 
+                color: {Theme.TEXT_SUB.name()}; 
+            }}
+            QPushButton:hover {{ 
+                background: {Theme.PRIMARY.name()}; 
+                color: white; 
+            }}
         """)
         self.add_btn.clicked.connect(lambda: self.callback(self.name, self.price))
         layout.addWidget(self.add_btn)
@@ -67,24 +80,24 @@ class CartItem(QFrame):
     """Stacked card for cart items"""
     def __init__(self, name, price, qty, on_change, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(80)
+        self.setFixedHeight(85)
         self.name = name
         self.price = price
         self.qty = qty
         self.on_change = on_change
         
-        self.setStyleSheet("background: white; border-bottom: 1px solid #F1F5F9;")
+        self.setStyleSheet(f"background: white; border: none; border-radius: 12px;")
         
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(15, 5, 15, 5)
+        layout.setContentsMargins(20, 10, 20, 10)
         
         info = QVBoxLayout()
         name_lbl = QLabel(name)
-        name_lbl.setFont(QFont("Inter", 11, QFont.Bold))
-        name_lbl.setStyleSheet("color: #0F172A;")
+        name_lbl.setFont(Theme.get_font(12, QFont.Bold))
+        name_lbl.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()};")
         
-        price_lbl = QLabel(f"Rs. {price:.2f} / unit")
-        price_lbl.setStyleSheet("color: #64748B; font-size: 11px;")
+        price_lbl = QLabel(f"Rs. {price:.2f} per unit")
+        price_lbl.setStyleSheet(f"color: {Theme.TEXT_SUB.name()}; font-size: 11px;")
         info.addWidget(name_lbl)
         info.addWidget(price_lbl)
         layout.addLayout(info)
@@ -93,21 +106,23 @@ class CartItem(QFrame):
         
         # Stepper
         stepper = QHBoxLayout()
-        btn_style = "background: #F1F5F9; border: none; border-radius: 12px; font-weight: bold; color: #475569;"
+        btn_style = f"background: {Theme.BG_MAIN.name()}; border: none; border-radius: 6px; font-weight: bold; color: {Theme.TEXT_MAIN.name()};"
         
         minus = QPushButton("-")
-        minus.setFixedSize(28, 28)
+        minus.setFixedSize(32, 32)
         minus.setStyleSheet(btn_style)
+        minus.setCursor(Qt.PointingHandCursor)
         minus.clicked.connect(lambda: self.update_qty(-1))
         
         self.qty_lbl = QLabel(str(qty))
         self.qty_lbl.setFixedWidth(30)
         self.qty_lbl.setAlignment(Qt.AlignCenter)
-        self.qty_lbl.setFont(QFont("Inter", 11, QFont.Bold))
+        self.qty_lbl.setFont(Theme.get_font(12, QFont.Bold))
         
         plus = QPushButton("+")
-        plus.setFixedSize(28, 28)
+        plus.setFixedSize(32, 32)
         plus.setStyleSheet(btn_style)
+        plus.setCursor(Qt.PointingHandCursor)
         plus.clicked.connect(lambda: self.update_qty(1))
         
         stepper.addWidget(minus)
@@ -116,10 +131,10 @@ class CartItem(QFrame):
         layout.addLayout(stepper)
         
         self.total_lbl = QLabel(f"Rs. {price*qty:.2f}")
-        self.total_lbl.setFixedWidth(100)
+        self.total_lbl.setFixedWidth(120)
         self.total_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.total_lbl.setFont(QFont("Inter", 12, QFont.Bold))
-        self.total_lbl.setStyleSheet("color: #0F172A;")
+        self.total_lbl.setFont(Theme.get_font(14, QFont.Bold))
+        self.total_lbl.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()};")
         layout.addWidget(self.total_lbl)
 
     def update_qty(self, delta):
@@ -134,21 +149,21 @@ class CartItem(QFrame):
 
 class BillingWindow(QWidget):
     def __init__(self, parent=None):
-        super().__init__(parent, Qt.Window)
-        self.setWindowTitle("MediTrack POS - Express Checkout")
-        self.resize(1100, 700) # Reduced height
-        self.setStyleSheet("background: #F8FAFC;")
+        super().__init__(parent)
+        self.setWindowTitle("MediTrack - Express POS")
+        self.setMinimumSize(1000, 700)
+        self.resize(1150, 750)
+        self.setStyleSheet(f"background: {Theme.BG_MAIN.name()};")
+        self.cart_data = {}
+        self.primary = Theme.PRIMARY.name()
+        self.accent = Theme.PRIMARY.name() # Standardizing on primary for now
         
-        self.primary = "#0F172A"
-        self.accent = "#2C7878"
-        self.cart_data = {} # {name: [price, qty]}
-        
-        # Debounce timer for search
         self.search_timer = QTimer()
         self.search_timer.setSingleShot(True)
         self.search_timer.timeout.connect(self.execute_search)
 
         self.init_ui()
+
 
     def init_ui(self):
         main_layout = QHBoxLayout(self)
@@ -157,15 +172,12 @@ class BillingWindow(QWidget):
 
         # 1. Left Panel (Inventory Row List) - 40%
         left_panel = QFrame()
-        left_panel.setStyleSheet("background: white; border-color: white; border-right: 1px solid #E2E8F0;")
+        left_panel.setStyleSheet(f"background: white; border: none; border-right: 1px solid {Theme.BORDER.name()};")
         left_layout = QVBoxLayout(left_panel)
         left_layout.setContentsMargins(25, 25, 25, 25)
         left_layout.setSpacing(20)
 
-        title = QLabel("Pharmacy Inventory")
-        title.setFont(QFont("Inter", 14, QFont.Bold))
-        title.setStyleSheet(f"color: {self.primary};")
-        left_layout.addWidget(title)
+        # No local title here, use global header
 
         # Search Bar
         self.search_input = QLineEdit()
@@ -173,14 +185,17 @@ class BillingWindow(QWidget):
         self.search_input.setFixedHeight(45)
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
-                background: white;
-                border: 1px solid #E2E8F0;
+                background: {Theme.BG_MAIN.name()};
+                border: none;
                 border-radius: 8px;
-                color: #0F172A;
+                color: {Theme.TEXT_MAIN.name()};
                 padding-left: 15px;
                 font-size: 14px;
             }}
-            QLineEdit:focus {{ border-color: {self.accent}; }}
+            QLineEdit:focus {{ 
+                background: white;
+                border: 1px solid {self.accent};
+            }}
         """)
         self.search_input.textChanged.connect(self.handle_search_input)
         left_layout.addWidget(self.search_input)
@@ -209,41 +224,7 @@ class BillingWindow(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(0)
 
-        # Header
-        header = QFrame()
-        header.setFixedHeight(70)
-        header.setStyleSheet("border-bottom: 1px solid #F1F5F9; background: white;")
-        h_layout = QHBoxLayout(header)
-        h_layout.setContentsMargins(30, 0, 30, 0)
-        
-        cart_title = QLabel("Billing Cart")
-        cart_title.setFont(QFont("Inter", 16, QFont.Bold))
-        h_layout.addWidget(cart_title)
-        
-        h_layout.addStretch()
-        
-        self.bill_no_lbl = QLabel(f"POS-{datetime.now().strftime('%H%M%S')}")
-        self.bill_no_lbl.setStyleSheet("color: #64748B; font-weight: bold; margin-right: 10px;")
-        h_layout.addWidget(self.bill_no_lbl)
-
-        self.logout_btn = QPushButton("🚪 Logout")
-        self.logout_btn.setFixedSize(100, 35)
-        self.logout_btn.setStyleSheet("""
-            QPushButton {
-                background: #FEF2F2;
-                color: #EF4444;
-                border: 1px solid #FEE2E2;
-                border-radius: 6px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background: #FEE2E2;
-            }
-        """)
-        self.logout_btn.clicked.connect(self.handle_logout)
-        h_layout.addWidget(self.logout_btn)
-        
-        right_layout.addWidget(header)
+        # Local header removed to save space
 
         # Cart Items List
         self.cart_scroll = QScrollArea()
@@ -260,18 +241,47 @@ class BillingWindow(QWidget):
 
         # Summary & Checkout
         footer = QFrame()
-        footer.setStyleSheet("background: #F8FAFC; border-top: 1px solid #E2E8F0;")
+        footer.setStyleSheet(f"background: {Theme.BG_MAIN.name()}; border: none;")
         footer_layout = QVBoxLayout(footer)
         footer_layout.setContentsMargins(30, 20, 30, 20)
-        footer_layout.setSpacing(15)
+        # Customer Details
+        cust_card = QFrame()
+        cust_card.setStyleSheet("background: white; border-radius: 12px; border: none;")
+        cust_layout = QVBoxLayout(cust_card)
+        cust_layout.setContentsMargins(20, 15, 20, 15)
+        cust_layout.setSpacing(10)
+        
+        cust_title = QLabel("Customer Details")
+        cust_title.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()}; font-weight: bold; font-size: 14px;")
+        cust_layout.addWidget(cust_title)
+        
+        cust_inputs = QHBoxLayout()
+        self.cust_name = QLineEdit()
+        self.cust_name.setPlaceholderText("Customer Name")
+        self.cust_name.setStyleSheet(f"background: {Theme.BG_MAIN.name()}; border: none; border-radius: 6px; padding: 10px; color: {Theme.TEXT_MAIN.name()};")
+        
+        self.cust_phone = QLineEdit()
+        self.cust_phone.setPlaceholderText("Phone Number")
+        self.cust_phone.setStyleSheet(f"background: {Theme.BG_MAIN.name()}; border: none; border-radius: 6px; padding: 10px; color: {Theme.TEXT_MAIN.name()};")
+        
+        self.cust_address = QLineEdit()
+        self.cust_address.setPlaceholderText("Address")
+        self.cust_address.setStyleSheet(f"background: {Theme.BG_MAIN.name()}; border: none; border-radius: 6px; padding: 10px; color: {Theme.TEXT_MAIN.name()};")
+        
+        cust_inputs.addWidget(self.cust_name)
+        cust_inputs.addWidget(self.cust_phone)
+        cust_layout.addLayout(cust_inputs)
+        cust_layout.addWidget(self.cust_address)
+        
+        footer_layout.addWidget(cust_card)
 
         summary_card = QFrame()
-        summary_card.setStyleSheet("background: white; border-radius: 12px; border: 1px solid #E2E8F0;")
+        summary_card.setStyleSheet("background: white; border-radius: 16px; border: none;")
         sum_l = QVBoxLayout(summary_card)
         sum_l.setSpacing(8)
         
-        lbl_style = "color: #1E293B; font-weight: 500;"
-        val_style = "color: #1E293B; font-weight: bold;"
+        lbl_style = f"color: {Theme.TEXT_MAIN.name()}; font-weight: 600; font-size: 13px;"
+        val_style = f"color: {Theme.TEXT_MAIN.name()}; font-weight: bold; font-size: 14px;"
 
         sum1 = QHBoxLayout()
         ls1 = QLabel("Subtotal"); ls1.setStyleSheet(lbl_style); sum1.addWidget(ls1)
@@ -287,18 +297,18 @@ class BillingWindow(QWidget):
         self.discount_input_percent = QLineEdit()
         self.discount_input_percent.setPlaceholderText("%")
         self.discount_input_percent.setFixedWidth(50)
-        self.discount_input_percent.setStyleSheet("border: 1px solid #E2E8F0; border-radius: 4px; padding: 2px; color: #1E293B;")
+        self.discount_input_percent.setStyleSheet(f"border: none; background: {Theme.BG_MAIN.name()}; border-radius: 4px; padding: 2px; color: {Theme.TEXT_MAIN.name()}; font-weight: bold;")
         self.discount_input_percent.textChanged.connect(self.update_cart_ui)
         
         self.discount_input_fixed = QLineEdit()
         self.discount_input_fixed.setPlaceholderText("Fixed Rs.")
         self.discount_input_fixed.setFixedWidth(80)
-        self.discount_input_fixed.setStyleSheet("border: 1px solid #E2E8F0; border-radius: 4px; padding: 2px; color: #1E293B;")
+        self.discount_input_fixed.setStyleSheet(f"border: none; background: {Theme.BG_MAIN.name()}; border-radius: 4px; padding: 2px; color: {Theme.TEXT_MAIN.name()}; font-weight: bold;")
         self.discount_input_fixed.textChanged.connect(self.update_cart_ui)
         
         self.discount_lbl = QLabel("Rs. 0.00")
         self.discount_lbl.setAlignment(Qt.AlignRight)
-        self.discount_lbl.setStyleSheet("color: #EF4444; font-weight: bold;")
+        self.discount_lbl.setStyleSheet("color: #EF4444; font-weight: bold; font-size: 14px;")
         
         sum3.addWidget(self.discount_input_percent)
         sum3.addWidget(self.discount_input_fixed)
@@ -307,10 +317,10 @@ class BillingWindow(QWidget):
         
         total_row = QHBoxLayout()
         total_lbl = QLabel("Grand Total")
-        total_lbl.setFont(QFont("Inter", 14, QFont.Bold))
-        total_lbl.setStyleSheet("color: #1E293B;")
+        total_lbl.setFont(Theme.get_font(18, QFont.Bold))
+        total_lbl.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()};")
         self.total_lbl = QLabel("Rs. 0.00")
-        self.total_lbl.setFont(QFont("Inter", 24, QFont.Bold))
+        self.total_lbl.setFont(Theme.get_font(28, QFont.Bold))
         self.total_lbl.setStyleSheet(f"color: {self.accent};")
         total_row.addWidget(total_lbl); total_row.addStretch(); total_row.addWidget(self.total_lbl)
         
@@ -454,7 +464,11 @@ class BillingWindow(QWidget):
             if total < 0: total = 0
             
             # 1. Handle Customer
-            cust = Customer.find_or_create("Walk-in Customer")
+            c_name = self.cust_name.text().strip() or "Walk-in Customer"
+            c_phone = self.cust_phone.text().strip() or None
+            c_address = self.cust_address.text().strip() or None
+            
+            cust = Customer.find_or_create(c_name, c_phone, c_address)
             
             # 2. Prepare items for model (inventory_id, quantity, unit_price, subtotal)
             sale_items = []
@@ -499,6 +513,9 @@ class BillingWindow(QWidget):
             
             # Clear cart on success
             self.cart_data = {}
+            self.cust_name.clear()
+            self.cust_phone.clear()
+            self.cust_address.clear()
             self.update_cart_ui()
             
         except Exception as e:
@@ -520,6 +537,11 @@ class BillingWindow(QWidget):
                 import traceback
                 traceback.print_exc()
                 QMessageBox.critical(self, "Logout Error", f"Could not return to login screen.\n\nError: {e}")
+
+    def setup_header_actions(self, layout):
+        self.bill_no_lbl = QLabel(f"POS-{datetime.now().strftime('%H%M%S')}")
+        self.bill_no_lbl.setStyleSheet(f"color: {Theme.TEXT_SUB.name()}; font-weight: bold; margin-right: 15px;")
+        layout.addWidget(self.bill_no_lbl)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

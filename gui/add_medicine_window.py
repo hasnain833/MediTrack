@@ -7,12 +7,15 @@ from PySide6.QtCore import Qt, QSize, QDate, QRect, QPoint
 from PySide6.QtGui import (QFont, QColor, QPainter, QPen, QBrush, QLinearGradient, 
                            QIcon, QPainterPath)
 
+from utils.theme import Theme
+from gui.components import ModernButton, GlassCard as GlobalGlassCard
+
 class StyledLabel(QLabel):
     """Figma-style label: 12pt uppercase semibold teal"""
     def __init__(self, text, parent=None):
         super().__init__(text, parent)
-        self.setFont(QFont("Inter", 10, QFont.DemiBold))
-        self.setStyleSheet("color: #2C7878; text-transform: uppercase; letter-spacing: 0.5px;")
+        self.setFont(Theme.get_font(10, QFont.DemiBold))
+        self.setStyleSheet(f"color: {Theme.PRIMARY.name()}; text-transform: uppercase; letter-spacing: 0.5px; border: none; background: transparent;")
 
 class ModernInput(QLineEdit):
     """Modern input with hover/focus states and subtle glow"""
@@ -20,21 +23,21 @@ class ModernInput(QLineEdit):
         super().__init__(parent)
         self.setPlaceholderText(placeholder)
         self.setFixedHeight(45)
-        self.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #E2E8F0;
+        self.setStyleSheet(f"""
+            QLineEdit {{
+                border: 1px solid {Theme.BORDER.name()};
                 border-radius: 8px;
                 padding: 0 12px;
                 background: white;
                 font-size: 14px;
-                color: #1E293B;
-            }
-            QLineEdit:hover {
-                border-color: #CBD5E1;
-            }
-            QLineEdit:focus {
-                border: 2px solid #2C7878;
-            }
+                color: {Theme.TEXT_MAIN.name()};
+            }}
+            QLineEdit:hover {{
+                border-color: {Theme.BORDER_DARK.name()};
+            }}
+            QLineEdit:focus {{
+                border: 2px solid {Theme.PRIMARY.name()};
+            }}
         """)
 
 class QuantityStepper(QWidget):
@@ -45,31 +48,34 @@ class QuantityStepper(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(5)
         
-        btn_style = """
-            QPushButton {
-                background: #F1F5F9;
-                border: 1px solid #E2E8F0;
+        btn_style = f"""
+            QPushButton {{
+                background: {Theme.BG_MAIN.name()};
+                border: 1px solid {Theme.BORDER.name()};
                 border-radius: 6px;
                 font-weight: bold;
                 font-size: 16px;
-                color: #475569;
-            }
-            QPushButton:hover { background: #E2E8F0; }
+                color: {Theme.TEXT_SUB.name()};
+            }}
+            QPushButton:hover {{ background: {Theme.BORDER.name()}; }}
         """
         
         self.minus_btn = QPushButton("-")
-        self.minus_btn.setFixedSize(32, 32)
+        self.minus_btn.setFixedSize(36, 36)
         self.minus_btn.setStyleSheet(btn_style)
+        self.minus_btn.setCursor(Qt.PointingHandCursor)
         
         self.value_input = QLineEdit("0")
-        self.value_input.setFixedWidth(60)
-        self.value_input.setFixedHeight(32)
+        self.value_input.setFixedWidth(70)
+        self.value_input.setFixedHeight(36)
         self.value_input.setAlignment(Qt.AlignCenter)
-        self.value_input.setStyleSheet("border: 1px solid #E2E8F0; border-radius: 6px; background: white;")
+        self.value_input.setFont(Theme.get_font(12, QFont.Bold))
+        self.value_input.setStyleSheet(f"border: 1px solid {Theme.BORDER.name()}; border-radius: 6px; background: white; color: {Theme.TEXT_MAIN.name()};")
         
         self.plus_btn = QPushButton("+")
-        self.plus_btn.setFixedSize(32, 32)
+        self.plus_btn.setFixedSize(36, 36)
         self.plus_btn.setStyleSheet(btn_style)
+        self.plus_btn.setCursor(Qt.PointingHandCursor)
         
         layout.addWidget(self.minus_btn)
         layout.addWidget(self.value_input)
@@ -79,8 +85,10 @@ class QuantityStepper(QWidget):
         self.plus_btn.clicked.connect(lambda: self.update_val(1))
 
     def update_val(self, delta):
-        val = int(self.value_input.text() or 0)
-        self.value_input.setText(str(max(0, val + delta)))
+        try:
+            val = int(self.value_input.text() or 0)
+            self.value_input.setText(str(max(0, val + delta)))
+        except: self.value_input.setText("0")
 
 class ProgressIndicator(QWidget):
     """Top progress bar showing current step"""
@@ -88,7 +96,7 @@ class ProgressIndicator(QWidget):
         super().__init__(parent)
         self.steps = steps
         self.current = current
-        self.setFixedHeight(60)
+        self.setFixedHeight(70)
         
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -96,19 +104,19 @@ class ProgressIndicator(QWidget):
         
         w = self.width()
         h = self.height()
-        padding = 50
-        track_y = h // 2 - 2
+        padding = 60
+        track_y = h // 2 - 5
         
         # Draw track
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor("#F1F5F9"))
-        painter.drawRoundedRect(padding, track_y, w - 2*padding, 4, 2, 2)
+        painter.setBrush(Theme.BG_MAIN)
+        painter.drawRoundedRect(padding, track_y, w - 2*padding, 6, 3, 3)
         
         # Draw active track
         step_w = (w - 2*padding) / (len(self.steps) - 1)
         active_w = self.current * step_w
-        painter.setBrush(QColor("#2C7878"))
-        painter.drawRoundedRect(padding, track_y, active_w, 4, 2, 2)
+        painter.setBrush(Theme.PRIMARY)
+        painter.drawRoundedRect(padding, track_y, active_w, 6, 3, 3)
         
         # Draw nodes
         for i, step in enumerate(self.steps):
@@ -116,28 +124,26 @@ class ProgressIndicator(QWidget):
             is_active = i <= self.current
             
             painter.setBrush(QColor("white"))
-            painter.setPen(QPen(QColor("#2C7878") if is_active else QColor("#CBD5E1"), 2))
-            painter.drawEllipse(QPoint(x, track_y + 2), 6, 6)
+            painter.setPen(QPen(Theme.PRIMARY if is_active else Theme.BORDER_DARK, 2))
+            painter.drawEllipse(QPoint(x, track_y + 3), 8, 8)
             
             if is_active:
-                painter.setBrush(QColor("#2C7878"))
-                painter.drawEllipse(QPoint(x, track_y + 2), 3, 3)
+                painter.setBrush(Theme.PRIMARY)
+                painter.drawEllipse(QPoint(x, track_y + 3), 4, 4)
             
             # Label
-            painter.setPen(QPen(QColor("#2C7878") if i == self.current else QColor("#64748B")))
-            painter.setFont(QFont("Inter", 8, QFont.Bold if i == self.current else QFont.Normal))
-            rect = QRect(x - 50, track_y + 15, 100, 20)
+            painter.setPen(QPen(Theme.PRIMARY if i == self.current else Theme.TEXT_SUB))
+            painter.setFont(Theme.get_font(9, QFont.Bold if i == self.current else QFont.Normal))
+            rect = QRect(x - 60, track_y + 20, 120, 25)
             painter.drawText(rect, Qt.AlignCenter, step)
 
 class AddMedicineWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent, Qt.Window)
-        self.setWindowTitle("MediTrack - Add New Medicine")
-        self.setFixedSize(900, 680)
-        self.setStyleSheet("background-color: white;")
-        self.primary = "#0F172A"
-        self.accent = "#2C7878"
-        self.border = "#E2E8F0"
+        self.setWindowTitle("MediTrack Pro - Register Medicine")
+        self.setMinimumSize(850, 650)
+        self.resize(950, 720)
+        self.setStyleSheet(f"background-color: {Theme.BG_MAIN.name()};")
         self.init_ui()
 
     def paintEvent(self, event):
@@ -187,29 +193,30 @@ class AddMedicineWindow(QWidget):
         cat_v = QVBoxLayout()
         cat_v.addWidget(StyledLabel("Category"))
         self.cat_combo = QComboBox()
-        self.cat_combo.addItems(["Painkiller", "Antibiotic", "Vitamin", "Surgical"])
+        self.cat_combo.addItems(["Painkiller", "Antibiotic", "Vitamin", "Surgical", "Others"])
         self.cat_combo.setFixedHeight(45)
         self.cat_combo.setStyleSheet(f"""
             QComboBox {{ 
-                border: 1px solid #E2E8F0; 
+                border: none; 
                 border-radius: 8px; 
-                padding-left: 10px; 
-                background: white;
-                color: #1E293B;
+                padding-left: 12px; 
+                background: {Theme.BG_MAIN.name()};
+                color: {Theme.TEXT_MAIN.name()};
             }}
-            QComboBox:focus {{ border: 2px solid #2C7878; }}
+            QComboBox:focus {{ border: 1px solid {Theme.PRIMARY.name()}; background: white; }}
             QComboBox::drop-down {{ border: none; width: 30px; }}
-            QComboBox::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid #64748B; margin-right: 10px; }}
+            QComboBox::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid {Theme.TEXT_SUB.name()}; margin-right: 10px; }}
             QAbstractItemView {{
                 background-color: white;
-                border: 1px solid #E2E8F0;
-                selection-background-color: #F8FAFC;
-                selection-color: #2C7878;
+                border: 1px solid {Theme.BORDER.name()};
+                selection-background-color: {Theme.BG_MAIN.name()};
+                selection-color: {Theme.PRIMARY.name()};
                 outline: none;
-                padding: 4px;
+                padding: 6px;
+                color: {Theme.TEXT_MAIN.name()};
             }}
         """)
-        self.cat_combo.view().setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.cat_combo.view().setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         cat_v.addWidget(self.cat_combo)
         row1.addLayout(cat_v)
 
@@ -234,33 +241,33 @@ class AddMedicineWindow(QWidget):
         calendar.setStyleSheet(f"""
             QCalendarWidget QWidget {{ background-color: white; }}
             QCalendarWidget QToolButton {{
-                color: #1E293B;
+                color: {Theme.TEXT_MAIN.name()};
                 background-color: white;
                 border: none;
                 font-weight: bold;
             }}
             QCalendarWidget QMenu {{ background-color: white; }}
-            QCalendarWidget QSpinBox {{ background-color: white; color: #1E293B; }}
+            QCalendarWidget QSpinBox {{ background-color: white; color: {Theme.TEXT_MAIN.name()}; }}
             QCalendarWidget QAbstractItemView:enabled {{
-                color: #1E293B;
-                selection-background-color: #2C7878;
+                color: {Theme.TEXT_MAIN.name()};
+                selection-background-color: {Theme.PRIMARY.name()};
                 selection-color: white;
                 outline: none;
             }}
-            QCalendarWidget #qt_calendar_navigationbar {{ background-color: white; border-bottom: 1px solid #E2E8F0; }}
+            QCalendarWidget #qt_calendar_navigationbar {{ background-color: white; border-bottom: 1px solid {Theme.BORDER.name()}; }}
         """)
         
-        self.expiry_input.setStyleSheet("""
-            QDateEdit { 
-                border: 1px solid #E2E8F0; 
+        self.expiry_input.setStyleSheet(f"""
+            QDateEdit {{ 
+                border: none; 
                 border-radius: 8px; 
-                padding-left: 10px; 
-                background: white;
-                color: #1E293B;
-            }
-            QDateEdit:focus { border: 2px solid #2C7878; }
-            QDateEdit::drop-down { border: none; width: 30px; }
-            QDateEdit::down-arrow { image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid #64748B; margin-right: 10px; }
+                padding-left: 12px; 
+                background: {Theme.BG_MAIN.name()};
+                color: {Theme.TEXT_MAIN.name()};
+            }}
+            QDateEdit:focus {{ border: 1px solid {Theme.PRIMARY.name()}; background: white; }}
+            QDateEdit::drop-down {{ border: none; width: 30px; }}
+            QDateEdit::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid {Theme.TEXT_SUB.name()}; margin-right: 10px; }}
         """)
         exp_v.addWidget(self.expiry_input)
         row2.addLayout(exp_v)
@@ -297,36 +304,33 @@ class AddMedicineWindow(QWidget):
         right_col.setSpacing(20)
 
         actions_card = QFrame()
-        actions_card.setFixedWidth(280)
-        actions_card.setStyleSheet("background: #F8FAFC; border-radius: 16px; border: 1px solid #E2E8F0;")
+        actions_card.setFixedWidth(300)
+        actions_card.setStyleSheet(f"background: white; border-radius: 16px; border: none;")
         act_layout = QVBoxLayout(actions_card)
-        act_layout.setContentsMargins(20, 20, 20, 20)
-        act_layout.setSpacing(15)
+        act_layout.setContentsMargins(25, 25, 25, 25)
+        act_layout.setSpacing(20)
         
         act_layout.addWidget(StyledLabel("Quick Actions"))
         
-        scan_btn = QPushButton("📷  Scan Barcode")
-        scan_btn.setFixedHeight(45)
-        scan_btn.setStyleSheet("""
-            QPushButton { background: white; border: 1px solid #E2E8F0; border-radius: 8px; font-weight: bold; color: #1E293B;}
-            QPushButton:hover { background: #F1F5F9; border-color: #CBD5E1; }
-        """)
-        act_layout.addWidget(scan_btn)
+        self.scan_btn = ModernButton("📷  Scan Barcode", primary=False)
+        act_layout.addWidget(self.scan_btn)
 
-        dup_btn = QPushButton("🔍  Duplicate from Existing")
-        dup_btn.setFixedHeight(45)
-        dup_btn.setStyleSheet(scan_btn.styleSheet())
-        act_layout.addWidget(dup_btn)
+        self.dup_btn = ModernButton("🔍  Duplicate Selected", primary=False)
+        act_layout.addWidget(self.dup_btn)
         
-        act_layout.addSpacing(10)
+        act_layout.addSpacing(15)
         act_layout.addWidget(StyledLabel("Reorder Level"))
         self.reorder_slider = QSlider(Qt.Horizontal)
-        self.reorder_slider.setRange(0, 100)
-        self.reorder_slider.setValue(20)
+        self.reorder_slider.setRange(0, 500)
+        self.reorder_slider.setValue(50)
+        self.reorder_slider.setStyleSheet(f"""
+            QSlider::groove:horizontal {{ background: {Theme.BG_MAIN.name()}; height: 6px; border-radius: 3px; }}
+            QSlider::handle:horizontal {{ background: {Theme.PRIMARY.name()}; width: 18px; margin: -6px 0; border-radius: 9px; }}
+        """)
         act_layout.addWidget(self.reorder_slider)
         
-        reorder_hint = QLabel("Notify when stock below 20")
-        reorder_hint.setStyleSheet("color: #64748B; font-size: 11px;")
+        reorder_hint = QLabel("Notify when stock below 50")
+        reorder_hint.setStyleSheet(f"color: {Theme.TEXT_SUB.name()}; font-size: 11px;")
         act_layout.addWidget(reorder_hint)
         self.reorder_slider.valueChanged.connect(lambda v: reorder_hint.setText(f"Notify when stock below {v}"))
 
@@ -341,46 +345,29 @@ class AddMedicineWindow(QWidget):
         # 3. Sticky Footer
         footer = QFrame()
         footer.setFixedHeight(85)
-        footer.setStyleSheet("""
-            QFrame { background: white; border-top: 1px solid #E2E8F0; }
+        footer.setStyleSheet(f"""
+            QFrame {{ background: white; border-top: 2px solid {Theme.BORDER.name()}; }}
         """)
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(40, 0, 40, 0)
         footer_layout.setSpacing(15)
 
         cancel_btn = QPushButton("Cancel")
-        cancel_btn.setStyleSheet("color: #64748B; font-weight: bold; border: none; background: transparent;")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setStyleSheet(f"color: {Theme.TEXT_SUB.name()}; font-weight: bold; border: none; background: transparent;")
         cancel_btn.clicked.connect(self.close)
         footer_layout.addWidget(cancel_btn)
         
         footer_layout.addStretch()
 
-        save_add_btn = QPushButton("Save & Add Another")
-        save_add_btn.setFixedSize(180, 45)
-        save_add_btn.setStyleSheet(f"""
-            QPushButton {{
-                border: 2px solid #E2E8F0;
-                border-radius: 12px;
-                color: {self.primary};
-                font-weight: bold;
-            }}
-            QPushButton:hover {{ background: #F8FAFC; }}
-        """)
-        footer_layout.addWidget(save_add_btn)
+        self.save_add_btn = ModernButton("Save & Add Another", primary=False)
+        self.save_add_btn.setFixedWidth(200)
+        footer_layout.addWidget(self.save_add_btn)
 
-        save_btn = QPushButton("Save Medicine")
-        save_btn.setFixedSize(160, 45)
-        save_btn.clicked.connect(self.save_medicine)
-        save_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, stop:0 #2C7878, stop:1 #1E5050);
-                color: white;
-                border-radius: 12px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background: #1E5050; }
-        """)
-        footer_layout.addWidget(save_btn)
+        self.save_btn = ModernButton("Register Product")
+        self.save_btn.setFixedWidth(180)
+        self.save_btn.clicked.connect(self.save_medicine)
+        footer_layout.addWidget(self.save_btn)
 
         main_layout.addWidget(footer)
 

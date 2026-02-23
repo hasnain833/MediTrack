@@ -1,21 +1,22 @@
-import sys
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QFrame, QScrollArea, QTableWidget, 
-                             QTableWidgetItem, QHeaderView, QDateEdit, QMessageBox)
+                             QTableWidgetItem, QHeaderView, QDateEdit, QMessageBox, QComboBox)
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QFont, QColor
-from datetime import datetime, timedelta
+from utils.theme import Theme
+from gui.components import ModernButton, GlassCard as GlobalGlassCard
 
 class FinancialSummaryCard(QFrame):
-    def __init__(self, title, value, color="#2C7878", parent=None):
+    def __init__(self, title, value, color=None, parent=None):
         super().__init__(parent)
-        self.setFixedWidth(240)
-        self.setFixedHeight(100)
+        if color is None: color = Theme.PRIMARY.name()
+        self.setMinimumWidth(220)
+        self.setFixedHeight(110)
         self.setStyleSheet(f"""
             QFrame {{
                 background: white;
-                border-radius: 12px;
-                border: 1px solid #E2E8F0;
+                border-radius: 16px;
+                border: none;
             }}
         """)
         
@@ -23,61 +24,46 @@ class FinancialSummaryCard(QFrame):
         layout.setContentsMargins(20, 15, 20, 15)
         
         t_lbl = QLabel(title)
-        t_lbl.setStyleSheet("color: #64748B; font-size: 13px; font-weight: 500;")
+        t_lbl.setFont(Theme.get_font(13, QFont.Medium))
+        t_lbl.setStyleSheet(f"color: {Theme.TEXT_SUB.name()}; background: transparent; border: none;")
         layout.addWidget(t_lbl)
         
         self.v_lbl = QLabel(value)
-        self.v_lbl.setStyleSheet(f"color: {color}; font-size: 22px; font-weight: bold;")
+        self.v_lbl.setFont(Theme.get_font(22, QFont.Bold))
+        self.v_lbl.setStyleSheet(f"color: {color}; background: transparent; border: none;")
         layout.addWidget(self.v_lbl)
 
 class FinancialOverviewWindow(QWidget):
     def __init__(self, parent=None):
-        super().__init__(parent, Qt.Window)
+        super().__init__(parent)
         self.setWindowTitle("Financial Management - Sales Overview")
-        self.resize(1100, 800)
-        self.setStyleSheet("background: #F8FAFC;")
-        
-        self.primary = "#0F172A"
-        self.accent = "#2C7878"
+        self.setMinimumSize(1000, 750)
+        self.resize(1150, 800)
+        self.setStyleSheet(f"background: {Theme.BG_MAIN.name()};")
         
         self.init_ui()
         self.apply_filter("today")
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(25)
-
-        # 1. Header & Quick Filters
-        header_row = QHBoxLayout()
-        title = QLabel("Sales Overview")
-        title.setFont(QFont("Inter", 24, QFont.Bold))
-        title.setStyleSheet(f"color: {self.primary};")
-        header_row.addWidget(title)
-        header_row.addStretch()
-        
-        export_btn = QPushButton("🖨️ Export Report")
-        export_btn.setFixedSize(150, 40)
-        export_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: white; border: 1px solid #E2E8F0; border-radius: 8px; font-weight: bold; color: {self.primary};
-            }}
-            QPushButton:hover {{ background: #F8FAFC; }}
-        """)
-        export_btn.clicked.connect(self.export_report)
-        header_row.addWidget(export_btn)
-        main_layout.addLayout(header_row)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
 
         # 2. Filter Bar
         filter_bar = QHBoxLayout()
         filter_bar.setSpacing(10)
         
-        btn_style = """
-            QPushButton {
-                background: white; border: 1px solid #E2E8F0; padding: 8px 15px; border-radius: 6px; font-weight: 500; color: #475569;
-            }
-            QPushButton:hover { background: #F8FAFC; border-color: #CBD5E1; }
-            QPushButton:checked { background: #2C7878; color: white; border-color: #2C7878; }
+        btn_style = f"""
+            QPushButton {{
+                background: white; 
+                border: 1px solid {Theme.BORDER.name()}; 
+                padding: 10px 20px; 
+                border-radius: 8px; 
+                font-weight: 600; 
+                color: {Theme.TEXT_MAIN.name()};
+            }}
+            QPushButton:hover {{ background: {Theme.BG_MAIN.name()}; border-color: {Theme.BORDER_DARK.name()}; }}
+            QPushButton:checked {{ background: {Theme.PRIMARY.name()}; color: white; border-color: {Theme.PRIMARY.name()}; }}
         """
         
         self.btn_today = QPushButton("Today")
@@ -96,24 +82,27 @@ class FinancialOverviewWindow(QWidget):
         self.btn_month.clicked.connect(lambda: self.apply_filter("month"))
 
         filter_bar.addSpacing(20)
-        filter_bar.addWidget(QLabel("Custom Range:", styleSheet="color: #64748B; font-weight: bold;"))
+        filter_bar.addWidget(QLabel("Range:", styleSheet=f"color: {Theme.TEXT_SUB.name()}; font-weight: bold;"))
         
         self.start_date = QDateEdit(QDate.currentDate())
         self.start_date.setCalendarPopup(True)
-        self.start_date.setFixedWidth(120)
-        self.start_date.setStyleSheet("padding: 5px; border: 1px solid #E2E8F0; border-radius: 4px;")
+        self.start_date.setFixedHeight(40)
+        self.start_date.setFixedWidth(130)
+        self.start_date.setStyleSheet(f"padding: 5px; border: 1px solid {Theme.BORDER.name()}; border-radius: 8px; background: white; color: {Theme.TEXT_MAIN.name()};")
         
         self.end_date = QDateEdit(QDate.currentDate())
         self.end_date.setCalendarPopup(True)
-        self.end_date.setFixedWidth(120)
-        self.end_date.setStyleSheet("padding: 5px; border: 1px solid #E2E8F0; border-radius: 4px;")
+        self.end_date.setFixedHeight(40)
+        self.end_date.setFixedWidth(130)
+        self.end_date.setStyleSheet(f"padding: 5px; border: 1px solid {Theme.BORDER.name()}; border-radius: 8px; background: white; color: {Theme.TEXT_MAIN.name()};")
         
-        self.go_btn = QPushButton("Apply")
-        self.go_btn.setStyleSheet(f"background: {self.primary}; color: white; padding: 6px 15px; border-radius: 4px; font-weight: bold;")
+        self.go_btn = ModernButton("Apply Filters")
+        self.go_btn.setFixedWidth(140)
+        self.go_btn.setFixedHeight(40)
         self.go_btn.clicked.connect(lambda: self.apply_filter("custom"))
         
         filter_bar.addWidget(self.start_date)
-        filter_bar.addWidget(QLabel("-"))
+        filter_bar.addWidget(QLabel("-", styleSheet=f"color: {Theme.TEXT_SUB.name()};"))
         filter_bar.addWidget(self.end_date)
         filter_bar.addWidget(self.go_btn)
         filter_bar.addStretch()
@@ -122,10 +111,10 @@ class FinancialOverviewWindow(QWidget):
 
         # 3. Summary Stats
         stats_layout = QHBoxLayout()
-        self.card_revenue = FinancialSummaryCard("Total Revenue", "Rs. 0.00", "#1E5F5F")
-        self.card_tax = FinancialSummaryCard("Total Tax (GST)", "Rs. 0.00", "#64748B")
+        self.card_revenue = FinancialSummaryCard("Total Revenue", "Rs. 0.00", Theme.PRIMARY.name())
+        self.card_tax = FinancialSummaryCard("Total Tax (GST)", "Rs. 0.00", Theme.TEXT_SUB.name())
         self.card_discount = FinancialSummaryCard("Total Discounts", "Rs. 0.00", "#EF4444")
-        self.card_orders = FinancialSummaryCard("Order Count", "0", "#0F172A")
+        self.card_orders = FinancialSummaryCard("Order Count", "0", Theme.TEXT_MAIN.name())
         
         stats_layout.addWidget(self.card_revenue)
         stats_layout.addWidget(self.card_tax)
@@ -141,27 +130,27 @@ class FinancialOverviewWindow(QWidget):
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setShowGrid(False)
-        self.table.setStyleSheet("""
-            QTableWidget {
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
                 background: white;
-                border: 1px solid #E2E8F0;
-                border-radius: 12px;
+                border: none;
+                border-radius: 16px;
                 gridline-color: transparent;
-                alternate-background-color: #F8FAFC;
-            }
-            QHeaderView::section {
-                background: #F8FAFC;
+                alternate-background-color: {Theme.BG_MAIN.name()};
+            }}
+            QHeaderView::section {{
+                background: {Theme.BG_MAIN.name()};
                 padding: 12px;
                 border: none;
-                border-bottom: 2px solid #E2E8F0;
+                border-bottom: 2px solid {Theme.BORDER.name()};
                 font-weight: bold;
-                color: #475569;
-            }
-            QTableWidget::item {
+                color: {Theme.TEXT_SUB.name()};
+            }}
+            QTableWidget::item {{
                 padding: 12px;
-                border-bottom: 1px solid #F1F5F9;
-                color: #1E293B;
-            }
+                border-bottom: 1px solid {Theme.BG_MAIN.name()};
+                color: {Theme.TEXT_MAIN.name()};
+            }}
         """)
         self.table.setAlternatingRowColors(True)
         main_layout.addWidget(self.table)
@@ -263,6 +252,12 @@ class FinancialOverviewWindow(QWidget):
             self.report_win.show()
         except Exception as e:
             QMessageBox.critical(self, "Export Error", f"Could not generate export.\n\nError: {e}")
+
+    def setup_header_actions(self, layout):
+        self.export_btn = ModernButton("🖨️ Export Report", primary=False)
+        self.export_btn.setFixedWidth(180)
+        self.export_btn.clicked.connect(self.export_report)
+        layout.addWidget(self.export_btn)
 
 if __name__ == "__main__":
     from PySide6.QtWidgets import QApplication

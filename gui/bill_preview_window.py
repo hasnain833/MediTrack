@@ -106,7 +106,7 @@ class BillPreviewWindow(QWidget):
         super().__init__(None, Qt.Window)
         self.setWindowTitle("Professional Invoice - MediTrack")
         self.resize(850, 950)
-        self.setStyleSheet("background-color: #F1F5F9;")
+        self.setStyleSheet(f"background-color: {Theme.BG_MAIN.name()};")
         self.bill_data = bill_data
         self.template = TemplateService.load_template()
         self.init_ui()
@@ -196,7 +196,7 @@ class BillPreviewWindow(QWidget):
         
         # Right: Invoice Details
         inv_card = QFrame()
-        inv_card.setStyleSheet("background: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0;")
+        inv_card.setStyleSheet(f"background: {t['theme'].get('bg_card', '#F8FAFC')}; border-radius: 8px; border: none;")
         inv_l = QGridLayout(inv_card)
         inv_l.setSpacing(10)
         
@@ -246,7 +246,7 @@ class BillPreviewWindow(QWidget):
         total_v = QVBoxLayout()
         summary = QFrame()
         summary.setFixedWidth(280)
-        summary.setStyleSheet("background: white; border: 1px solid #E2E8F0; border-radius: 12px;")
+        summary.setStyleSheet(f"background: white; border: none; border-radius: 12px;")
         sum_layout = QVBoxLayout(summary)
         sum_layout.setSpacing(10)
         
@@ -319,7 +319,7 @@ class BillPreviewWindow(QWidget):
         paper_layout.addLayout(footer)
 
         scroll_content = QWidget()
-        scroll_content.setStyleSheet("background-color: #F1F5F9;")
+        scroll_content.setStyleSheet(f"background-color: {Theme.BG_MAIN.name()};")
         scroll_layout = QVBoxLayout(scroll_content)
         scroll_layout.setAlignment(Qt.AlignCenter)
         scroll_layout.addWidget(self.paper)
@@ -329,7 +329,7 @@ class BillPreviewWindow(QWidget):
 
         float_footer = QFrame()
         float_footer.setFixedHeight(80)
-        float_footer.setStyleSheet("background: white; border-top: 1px solid #E2E8F0;")
+        float_footer.setStyleSheet(f"background: white; border: none; border-top: 2px solid {Theme.BORDER.name()};")
         ff_layout = QHBoxLayout(float_footer)
         ff_layout.setContentsMargins(40, 0, 40, 0)
         
