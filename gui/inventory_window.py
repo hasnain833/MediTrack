@@ -52,10 +52,13 @@ class InventoryWindow(QWidget):
                 border-radius: 8px;
                 padding: 0 12px;
                 background: {Theme.BG_MAIN.name()};
+                color: {Theme.TEXT_MAIN.name()};
+                font-size: 13px;
             }}
             QLineEdit:focus {{
                 background: white;
                 border: 1px solid {Theme.PRIMARY.name()};
+                color: {Theme.TEXT_MAIN.name()};
             }}
         """)
         self.search_input.textChanged.connect(self.search)
@@ -70,7 +73,9 @@ class InventoryWindow(QWidget):
         cat_box.addWidget(cat_lbl)
 
         self.cat_checks = {}
-        for cat in ["Painkiller", "Antibiotic", "Vitamin", "Expired"]:
+        # Map our categories to the UI checkboxes
+        categories = ["Painkiller", "Antibiotic", "Vitamin", "General", "Others"]
+        for cat in categories:
             cb = QCheckBox(cat)
             cb.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()}; font-size: 13px; padding: 5px;")
             cb.stateChanged.connect(self.filter_data)
@@ -98,8 +103,8 @@ class InventoryWindow(QWidget):
         tl.setContentsMargins(20, 20, 20, 20)
         
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
-        self.table.setHorizontalHeaderLabels(["ID", "Medicine Name", "Category", "Company", "Batch", "Expiry", "Stock", "Price"])
+        self.table.setColumnCount(10)
+        self.table.setHorizontalHeaderLabels(["ID", "Medicine Name", "Strength", "Form", "Category", "Company", "Batch", "Expiry", "Stock", "Price"])
         self.table.setStyleSheet(f"""
             QTableWidget {{
                 background: white;
@@ -112,11 +117,30 @@ class InventoryWindow(QWidget):
                 border: none;
                 border-bottom: 2px solid {Theme.BORDER.name()};
                 font-weight: bold;
-                color: {Theme.TEXT_SUB.name()};
+                color: {Theme.TEXT_MAIN.name()};
+                font-size: 13px;
             }}
         """)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
+        self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(False)
+        
+        # Configure column resizing
+        header = self.table.horizontalHeader()
+        header.setMinimumSectionSize(80)
+        header.setSectionResizeMode(QHeaderView.Interactive) # Allow user to resize
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents) # ID
+        header.setSectionResizeMode(1, QHeaderView.Stretch)          # Name
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents) # Strength
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents) # Form
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents) # Category
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents) # Company
+        header.setSectionResizeMode(8, QHeaderView.ResizeToContents) # Stock
+        header.setSectionResizeMode(9, QHeaderView.ResizeToContents) # Price
+        
+        # Ensure name column has some breathing room
+        self.table.setColumnWidth(1, 200)
+        
         tl.addWidget(self.table)
         
         content_row.addWidget(sidebar, 0) # Sidebar keeps fixed width
@@ -139,10 +163,12 @@ class InventoryWindow(QWidget):
         self.table.setRowCount(len(data))
         for row, r_data in enumerate(data):
             # Map dictionary fields to table columns
-            # ["ID", "Medicine Name", "Category", "Company", "Batch", "Expiry", "Stock", "Price"]
+            # ["ID", "Medicine Name", "Strength", "Form", "Category", "Company", "Batch", "Expiry", "Stock", "Price"]
             fields = [
                 str(r_data.get('id', '')),
                 r_data.get('medicine_name', ''),
+                r_data.get('strength', ''),
+                r_data.get('form', ''),
                 r_data.get('category', ''),
                 r_data.get('company', ''),
                 r_data.get('batch_no', ''),
@@ -156,11 +182,11 @@ class InventoryWindow(QWidget):
                 item.setTextAlignment(Qt.AlignCenter)
                 
                 # Style critical values
-                if col == 6: # Stock
+                if col == 8: # Stock
                     if int(val) < 10:
                         item.setForeground(QColor("#EF4444")) # Urgent
                         item.setFont(QFont("Inter", 10, QFont.Bold))
-                elif col == 5: # Expiry
+                elif col == 7: # Expiry
                     try:
                         from datetime import date
                         exp_date = r_data.get('expiry_date')
@@ -191,11 +217,15 @@ class InventoryWindow(QWidget):
 
     def filter_data(self):
         selected_cats = [cat for cat, cb in self.cat_checks.items() if cb.isChecked()]
+        
+        if not hasattr(self, 'current_data') or not self.current_data:
+            return
+
         if not selected_cats:
-            self.load_data(self.sample_data)
+            self.load_data(self.current_data)
             return
             
-        filtered = [item for item in self.sample_data if item[2] in selected_cats]
+        filtered = [item for item in self.current_data if item.get('category') in selected_cats]
         self.load_data(filtered)
 
     def add_medicine(self):
@@ -210,7 +240,7 @@ class InventoryWindow(QWidget):
 
     def setup_header_actions(self, layout):
         self.add_btn = ModernButton("+ Register Medicine")
-        self.add_btn.setFixedWidth(200)
+        self.add_btn.setMinimumWidth(220)
         self.add_btn.clicked.connect(self.add_medicine)
         layout.addWidget(self.add_btn)
 

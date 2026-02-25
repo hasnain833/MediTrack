@@ -2,7 +2,8 @@ import sys
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QLineEdit, QPushButton, QFrame, QGraphicsDropShadowEffect, 
                              QScrollArea, QComboBox, QSlider, QGridLayout, 
-                             QCompleter, QDateEdit, QStyle, QApplication)
+                             QCompleter, QDateEdit, QStyle, QApplication,
+                             QCheckBox, QTextEdit)
 from PySide6.QtCore import Qt, QSize, QDate, QRect, QPoint
 from PySide6.QtGui import (QFont, QColor, QPainter, QPen, QBrush, QLinearGradient, 
                            QIcon, QPainterPath)
@@ -163,7 +164,7 @@ class AddMedicineWindow(QWidget):
         main_layout.setSpacing(0)
 
         # 1. Top Progress Indicator
-        self.progress = ProgressIndicator(["Basic Info", "Inventory", "Pricing"], 0)
+        self.progress = ProgressIndicator(["Basic Info", "Inventory", "Pricing", "Medical"], 0)
         main_layout.addWidget(self.progress)
 
         # 2. Scrollable Form Content
@@ -181,104 +182,122 @@ class AddMedicineWindow(QWidget):
         left_col = QVBoxLayout()
         left_col.setSpacing(20)
 
-        # Medicine Name
-        left_col.addWidget(StyledLabel("Medicine Name"))
-        self.name_input = ModernInput("e.g. Paracetamol 500mg")
-        completer = QCompleter(["Paracetamol", "Ibuprofen", "Amoxicillin", "Cefixime"])
+        # Row 1: Medicine Name & Barcode
+        row_name = QHBoxLayout()
+        name_v = QVBoxLayout()
+        name_v.addWidget(StyledLabel("Medicine Name"))
+        self.name_input = ModernInput("e.g. Panadol, Arinac")
+        completer = QCompleter(["Panadol", "Arinac", "Paracetamol", "Amoxicillin"])
         self.name_input.setCompleter(completer)
-        left_col.addWidget(self.name_input)
+        name_v.addWidget(self.name_input)
+        row_name.addLayout(name_v, 2)
 
-        row1 = QHBoxLayout()
-        # Category
+        barcode_v = QVBoxLayout()
+        barcode_v.addWidget(StyledLabel("Barcode / SKU"))
+        self.barcode_input = ModernInput("Scan or type barcode")
+        barcode_v.addWidget(self.barcode_input)
+        row_name.addLayout(barcode_v, 1)
+        left_col.addLayout(row_name)
+
+        # Row 2: Strength & Form
+        row2 = QHBoxLayout()
+        strength_v = QVBoxLayout()
+        strength_v.addWidget(StyledLabel("Strength"))
+        self.strength_input = ModernInput("e.g. 500mg, 10mg/5ml")
+        strength_v.addWidget(self.strength_input)
+        row2.addLayout(strength_v)
+
+        form_v = QVBoxLayout()
+        form_v.addWidget(StyledLabel("Form"))
+        self.form_input = ModernInput("e.g. Tablet, Syrup, Injection")
+        form_v.addWidget(self.form_input)
+        row2.addLayout(form_v)
+        left_col.addLayout(row2)
+
+        # Row 3: Category & Company
+        row3 = QHBoxLayout()
         cat_v = QVBoxLayout()
         cat_v.addWidget(StyledLabel("Category"))
         self.cat_combo = QComboBox()
-        self.cat_combo.addItems(["Painkiller", "Antibiotic", "Vitamin", "Surgical", "Others"])
+        self.cat_combo.addItems(["Painkiller", "Antibiotic", "Vitamin", "Antipyretic", "Supplement", "Others"])
         self.cat_combo.setFixedHeight(45)
-        self.cat_combo.setStyleSheet(f"""
-            QComboBox {{ 
-                border: none; 
-                border-radius: 8px; 
-                padding-left: 12px; 
-                background: {Theme.BG_MAIN.name()};
-                color: {Theme.TEXT_MAIN.name()};
-            }}
-            QComboBox:focus {{ border: 1px solid {Theme.PRIMARY.name()}; background: white; }}
-            QComboBox::drop-down {{ border: none; width: 30px; }}
-            QComboBox::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid {Theme.TEXT_SUB.name()}; margin-right: 10px; }}
-            QAbstractItemView {{
-                background-color: white;
-                border: 1px solid {Theme.BORDER.name()};
-                selection-background-color: {Theme.BG_MAIN.name()};
-                selection-color: {Theme.PRIMARY.name()};
-                outline: none;
-                padding: 6px;
-                color: {Theme.TEXT_MAIN.name()};
-            }}
-        """)
-        self.cat_combo.view().setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.cat_combo.setStyleSheet(self.get_combo_style())
         cat_v.addWidget(self.cat_combo)
-        row1.addLayout(cat_v)
+        row3.addLayout(cat_v)
 
-        # Batch Number
+        comp_v = QVBoxLayout()
+        comp_v.addWidget(StyledLabel("Company / Manufacturer"))
+        self.company_input = ModernInput("e.g. GSK, Abbott, Getz")
+        comp_v.addWidget(self.company_input)
+        row3.addLayout(comp_v)
+        left_col.addLayout(row3)
+
+        # Inventory Row: Batch & Expiry
+        left_col.addSpacing(10)
+        left_col.addWidget(StyledLabel("Inventory & Expiry"))
+        row_inv = QHBoxLayout()
+        
         batch_v = QVBoxLayout()
         batch_v.addWidget(StyledLabel("Batch Number"))
         self.batch_input = ModernInput("BT-00123")
         batch_v.addWidget(self.batch_input)
-        row1.addLayout(batch_v)
-        left_col.addLayout(row1)
+        row_inv.addLayout(batch_v)
 
-        row2 = QHBoxLayout()
-        # Expiry Date
         exp_v = QVBoxLayout()
         exp_v.addWidget(StyledLabel("Expiry Date"))
         self.expiry_input = QDateEdit(QDate.currentDate().addYears(1))
         self.expiry_input.setFixedHeight(45)
         self.expiry_input.setCalendarPopup(True)
-        
-        # Style the calendar widget
-        calendar = self.expiry_input.calendarWidget()
-        calendar.setStyleSheet(f"""
-            QCalendarWidget QWidget {{ background-color: white; }}
-            QCalendarWidget QToolButton {{
-                color: {Theme.TEXT_MAIN.name()};
-                background-color: white;
-                border: none;
-                font-weight: bold;
-            }}
-            QCalendarWidget QMenu {{ background-color: white; }}
-            QCalendarWidget QSpinBox {{ background-color: white; color: {Theme.TEXT_MAIN.name()}; }}
-            QCalendarWidget QAbstractItemView:enabled {{
-                color: {Theme.TEXT_MAIN.name()};
-                selection-background-color: {Theme.PRIMARY.name()};
-                selection-color: white;
-                outline: none;
-            }}
-            QCalendarWidget #qt_calendar_navigationbar {{ background-color: white; border-bottom: 1px solid {Theme.BORDER.name()}; }}
-        """)
-        
-        self.expiry_input.setStyleSheet(f"""
-            QDateEdit {{ 
-                border: none; 
-                border-radius: 8px; 
-                padding-left: 12px; 
-                background: {Theme.BG_MAIN.name()};
-                color: {Theme.TEXT_MAIN.name()};
-            }}
-            QDateEdit:focus {{ border: 1px solid {Theme.PRIMARY.name()}; background: white; }}
-            QDateEdit::drop-down {{ border: none; width: 30px; }}
-            QDateEdit::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid {Theme.TEXT_SUB.name()}; margin-right: 10px; }}
-        """)
+        self.expiry_input.setStyleSheet(self.get_date_style())
         exp_v.addWidget(self.expiry_input)
-        row2.addLayout(exp_v)
+        row_inv.addLayout(exp_v)
+        left_col.addLayout(row_inv)
 
-        # Quantity
+        # Quantity Row: Stock & Reorder
+        row_qty = QHBoxLayout()
         qty_v = QVBoxLayout()
-        qty_v.addWidget(StyledLabel("Initial Quantity"))
+        qty_v.addWidget(StyledLabel("Initial Stock Quantity"))
         self.qty_stepper = QuantityStepper()
         qty_v.addWidget(self.qty_stepper)
-        row2.addLayout(qty_v)
-        left_col.addLayout(row2)
+        row_qty.addLayout(qty_v)
+
+        reorder_v = QVBoxLayout()
+        reorder_v.addWidget(StyledLabel("Reorder Level"))
+        self.reorder_input = ModernInput("50")
+        self.reorder_input.setFixedWidth(100)
+        reorder_v.addWidget(self.reorder_input)
+        row_qty.addLayout(reorder_v)
+        row_qty.addStretch()
+        left_col.addLayout(row_qty)
+
+        # Medical Info Section
+        left_col.addSpacing(10)
+        left_col.addWidget(StyledLabel("Medical Information & Compliance"))
+        
+        # Indication
+        left_col.addWidget(StyledLabel("Indication (Usage)"))
+        self.indication_input = ModernInput("e.g. Fever, Headache, Infection")
+        left_col.addWidget(self.indication_input)
+
+        # Side Effects
+        left_col.addWidget(StyledLabel("Potential Side Effects"))
+        self.side_effects_input = ModernInput("e.g. Drowsiness, Nausea")
+        left_col.addWidget(self.side_effects_input)
+
+        row_med = QHBoxLayout()
+        age_v = QVBoxLayout()
+        age_v.addWidget(StyledLabel("Age Restriction"))
+        self.age_input = ModernInput("e.g. None, 12+, Adults only")
+        age_v.addWidget(self.age_input)
+        row_med.addLayout(age_v)
+
+        presc_v = QVBoxLayout()
+        presc_v.addSpacing(25) # align with input center
+        self.presc_chk = QCheckBox("Prescription Required")
+        self.presc_chk.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()}; font-weight: bold; font-size: 13px;")
+        presc_v.addWidget(self.presc_chk)
+        row_med.addLayout(presc_v)
+        left_col.addLayout(row_med)
 
         # Pricing Section
         left_col.addSpacing(10)
@@ -287,12 +306,20 @@ class AddMedicineWindow(QWidget):
         price_grid = QGridLayout()
         price_grid.setSpacing(15)
         
-        for i, label_txt in enumerate(["Unit Cost ($)", "Selling Price ($)", "MRP ($)"]):
-            lbl = StyledLabel(label_txt)
-            price_grid.addWidget(lbl, 0, i)
-            inp = ModernInput("0.00")
-            inp.setAlignment(Qt.AlignRight)
-            price_grid.addWidget(inp, 1, i)
+        self.cost_input = ModernInput("0.00")
+        self.cost_input.setAlignment(Qt.AlignRight)
+        price_grid.addWidget(StyledLabel("Unit Cost"), 0, 0)
+        price_grid.addWidget(self.cost_input, 1, 0)
+
+        self.price_input = ModernInput("0.00")
+        self.price_input.setAlignment(Qt.AlignRight)
+        price_grid.addWidget(StyledLabel("Selling Price"), 0, 1)
+        price_grid.addWidget(self.price_input, 1, 1)
+
+        self.mrp_input = ModernInput("0.00")
+        self.mrp_input.setAlignment(Qt.AlignRight)
+        price_grid.addWidget(StyledLabel("MRP"), 0, 2)
+        price_grid.addWidget(self.mrp_input, 1, 2)
         
         left_col.addLayout(price_grid)
         left_col.addStretch()
@@ -378,18 +405,23 @@ class AddMedicineWindow(QWidget):
             
             # 1. Collect Data
             name = self.name_input.text().strip()
+            barcode = self.barcode_input.text().strip()
+            strength = self.strength_input.text().strip()
+            form = self.form_input.text().strip()
             category = self.cat_combo.currentText()
+            company = self.company_input.text().strip()
+            
             batch = self.batch_input.text().strip()
             expiry = self.expiry_input.date().toPython()
             qty = int(self.qty_stepper.value_input.text() or 0)
-            reorder = self.reorder_slider.value()
+            reorder = int(self.reorder_input.text() or 50)
             
-            # Since pricing fields were added dynamically in a grid, we need to find them
-            # or track them. In the original code, they were just local 'inp' vars.
-            # I'll modify the loop to store them or just find them by index.
-            # Grid: row 0 is labels, row 1 is inputs.
-            cost = self.find_input_at(1, 0)
-            selling = self.find_input_at(1, 1)
+            indication = self.indication_input.text().strip()
+            side_effects = self.side_effects_input.text().strip()
+            age_limit = self.age_input.text().strip()
+            presc_req = self.presc_chk.isChecked()
+            
+            price = float(self.price_input.text() or 0)
             
             if not name:
                 QMessageBox.warning(self, "Validation Error", "Medicine name is required.")
@@ -398,12 +430,19 @@ class AddMedicineWindow(QWidget):
             data = {
                 'medicine_name': name,
                 'category': category,
-                'company': 'Generic', # Placeholder as company field was missing in specific form
+                'company': company or 'Generic',
+                'barcode': barcode,
+                'strength': strength,
+                'form': form,
                 'batch_no': batch,
                 'expiry_date': expiry,
                 'stock_qty': qty,
-                'price': float(selling.text() or 0),
-                'reorder_level': reorder
+                'price': price,
+                'reorder_level': reorder,
+                'indication': indication,
+                'side_effects': side_effects,
+                'age_restriction': age_limit,
+                'prescription_required': presc_req
             }
             
             # 2. Save
@@ -422,18 +461,42 @@ class AddMedicineWindow(QWidget):
             print(f"Error saving medicine: {e}")
             QMessageBox.critical(self, "Save Error", f"Could not save medicine.\n\n{e}")
 
-    def find_input_at(self, row, col):
-        # Helper to find input in the price_grid
-        # This is a bit hacky because the grid wasn't stored
-        # I'll use findChildren as a safer way or just fix the init_ui to store them
-        # Let's check how many ModernInputs we have.
-        inputs = self.findChildren(ModernInput)
-        # name_input is 0, batch_input is 1, then the 3 price inputs 2,3,4
-        if row == 1:
-            if col == 0: return inputs[2] # Unit Cost
-            if col == 1: return inputs[3] # Selling
-            if col == 2: return inputs[4] # MRP
-        return None
+    def get_combo_style(self):
+        return f"""
+            QComboBox {{ 
+                border: none; 
+                border-radius: 8px; 
+                padding-left: 12px; 
+                background: {Theme.BG_MAIN.name()};
+                color: {Theme.TEXT_MAIN.name()};
+            }}
+            QComboBox:focus {{ border: 1px solid {Theme.PRIMARY.name()}; background: white; }}
+            QComboBox::drop-down {{ border: none; width: 30px; }}
+            QComboBox::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid {Theme.TEXT_SUB.name()}; margin-right: 10px; }}
+            QAbstractItemView {{
+                background-color: white;
+                border: 1px solid {Theme.BORDER.name()};
+                selection-background-color: {Theme.BG_MAIN.name()};
+                selection-color: {Theme.PRIMARY.name()};
+                outline: none;
+                padding: 6px;
+                color: {Theme.TEXT_MAIN.name()};
+            }}
+        """
+
+    def get_date_style(self):
+        return f"""
+            QDateEdit {{ 
+                border: none; 
+                border-radius: 8px; 
+                padding-left: 12px; 
+                background: {Theme.BG_MAIN.name()};
+                color: {Theme.TEXT_MAIN.name()};
+            }}
+            QDateEdit:focus {{ border: 1px solid {Theme.PRIMARY.name()}; background: white; }}
+            QDateEdit::drop-down {{ border: none; width: 30px; }}
+            QDateEdit::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid {Theme.TEXT_SUB.name()}; margin-right: 10px; }}
+        """
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

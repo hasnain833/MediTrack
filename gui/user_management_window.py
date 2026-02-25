@@ -105,7 +105,7 @@ class UserManagerWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("User Management")
-        self.setStyleSheet("background: white;")
+        self.setStyleSheet(f"background: {Theme.BG_MAIN.name()};")
         self.init_ui()
 
     def init_ui(self):
@@ -130,7 +130,13 @@ class UserManagerWindow(QWidget):
                 padding: 15px; 
                 border: none; 
                 font-weight: bold;
-                color: {Theme.TEXT_SUB.name()};
+                color: {Theme.TEXT_MAIN.name()};
+                font-size: 13px;
+            }}
+            QTableWidget::item {{
+                color: {Theme.TEXT_MAIN.name()};
+                padding: 10px;
+                border-bottom: 1px solid {Theme.BG_MAIN.name()};
             }}
         """)
         self.table.setAlternatingRowColors(True)
@@ -162,7 +168,7 @@ class UserManagerWindow(QWidget):
 
     def setup_header_actions(self, layout):
         self.add_btn = ModernButton("+ Register User")
-        self.add_btn.setFixedWidth(180)
+        self.add_btn.setMinimumWidth(180)
         self.add_btn.clicked.connect(self.add_user)
         layout.addWidget(self.add_btn)
 

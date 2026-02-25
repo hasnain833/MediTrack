@@ -338,13 +338,13 @@ class MainWindow(QWidget):
         
         # Header (Now dynamic titles and actions)
         self.header = QFrame()
-        self.header.setFixedHeight(70)
+        self.header.setFixedHeight(50)
         self.header.setStyleSheet(f"background-color: white; border: none;")
         header_layout = QHBoxLayout(self.header)
         header_layout.setContentsMargins(40, 0, 40, 0)
         
         self.header_title = QLabel("Dashboard")
-        self.header_title.setFont(Theme.get_font(24, QFont.Bold))
+        self.header_title.setFont(Theme.get_font(18, QFont.Bold))
         self.header_title.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()};")
         header_layout.addWidget(self.header_title)
         
@@ -363,8 +363,8 @@ class MainWindow(QWidget):
         self.scroll_content = QWidget()
         self.scroll_content.setStyleSheet(f"background-color: {Theme.BG_MAIN.name()};")
         self.body_layout = QVBoxLayout(self.scroll_content)
-        self.body_layout.setContentsMargins(40, 30, 40, 40)
-        self.body_layout.setSpacing(30)
+        self.body_layout.setContentsMargins(25, 15, 25, 20)
+        self.body_layout.setSpacing(20)
         
         self.scroll.setWidget(self.scroll_content)
         
@@ -490,7 +490,7 @@ class MainWindow(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["ID", "Customer", "Date", "Amount", "Status"])
-        self.table.setStyleSheet(f"QTableWidget {{ border: none; background: white; }} QHeaderView::section {{ background: {Theme.BG_MAIN.name()}; padding: 10px; border: none; }}")
+        self.table.setStyleSheet(f"QTableWidget {{ border: none; background: white; }} QHeaderView::section {{ background: {Theme.BG_MAIN.name()}; padding: 10px; border: none; font-weight: bold; font-size: 13px; color: {Theme.TEXT_MAIN.name()}; }} QTableWidget::item {{ color: {Theme.TEXT_MAIN.name()}; padding: 8px; }}")
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.populate_table()

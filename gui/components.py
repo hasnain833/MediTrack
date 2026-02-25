@@ -8,27 +8,30 @@ class ModernButton(QPushButton):
         super().__init__(text, parent)
         self.primary = primary
         self.setFixedHeight(45)
+        self.setMinimumWidth(130)  # Prevents text from being cut off
         self.setCursor(Qt.PointingHandCursor)
-        self.setFont(Theme.get_font(14, QFont.Bold))
+        self.setFont(Theme.get_font(13, QFont.Bold))
         
         # Default Styles
         self.update_style()
 
     def update_style(self, hover=False):
-        color = Theme.PRIMARY if self.primary else Theme.BG_CARD
-        text_color = "white" if self.primary else Theme.TEXT_MAIN
-        border = "none" # Always borderless for modernization
-        
-        if hover:
-            color = Theme.PRIMARY_DARK if self.primary else QColor("#F1F5F9")
+        if self.primary:
+            bg = Theme.PRIMARY_DARK.name() if hover else Theme.PRIMARY.name()
+            fg = "white"
+            border = "none"
+        else:
+            bg = "#F1F5F9" if hover else "white"
+            fg = Theme.TEXT_MAIN.name()
+            border = f"1px solid {Theme.BORDER.name()}"
 
         self.setStyleSheet(f"""
             QPushButton {{
-                background-color: {color.name()};
-                color: {text_color};
+                background-color: {bg};
+                color: {fg};
                 border: {border};
                 border-radius: 8px;
-                padding: 0 20px;
+                padding: 0 18px;
             }}
         """)
 
@@ -43,12 +46,12 @@ class ModernButton(QPushButton):
 class GlassCard(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet(f"""
-            QFrame {{
+        self.setStyleSheet("""
+            QFrame {
                 background-color: white;
                 border-radius: 16px;
                 border: none;
-            }}
+            }
         """)
         
         # Premium Shadow
@@ -75,7 +78,7 @@ class SidebarButton(QPushButton):
                 padding-left: 20px;
                 border: none;
                 border-radius: 8px;
-                color: {Theme.TEXT_SUB.name()};
+                color: {Theme.TEXT_MAIN.name()};
                 background: transparent;
             }}
             QPushButton:hover {{
@@ -83,7 +86,7 @@ class SidebarButton(QPushButton):
                 color: {Theme.PRIMARY.name()};
             }}
             QPushButton:checked {{
-                background-color: #EFF6F6;
+                background-color: #E6F4F4;
                 color: {Theme.PRIMARY.name()};
                 font-weight: bold;
             }}

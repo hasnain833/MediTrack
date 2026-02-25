@@ -10,7 +10,7 @@ class FinancialSummaryCard(QFrame):
     def __init__(self, title, value, color=None, parent=None):
         super().__init__(parent)
         if color is None: color = Theme.PRIMARY.name()
-        self.setMinimumWidth(220)
+        self.setMinimumWidth(180)
         self.setFixedHeight(110)
         self.setStyleSheet(f"""
             QFrame {{
@@ -19,6 +19,15 @@ class FinancialSummaryCard(QFrame):
                 border: none;
             }}
         """)
+        
+        from PySide6.QtWidgets import QGraphicsDropShadowEffect
+        from PySide6.QtGui import QColor as QC
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(20)
+        shadow.setXOffset(0)
+        shadow.setYOffset(6)
+        shadow.setColor(QC(0, 0, 0, 20))
+        self.setGraphicsEffect(shadow)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 15, 20, 15)
@@ -49,63 +58,103 @@ class FinancialOverviewWindow(QWidget):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(15)
 
-        # 2. Filter Bar
+        # 2. Filter Bar — segmented pill control + date range
         filter_bar = QHBoxLayout()
-        filter_bar.setSpacing(10)
-        
-        btn_style = f"""
-            QPushButton {{
-                background: white; 
-                border: 1px solid {Theme.BORDER.name()}; 
-                padding: 10px 20px; 
-                border-radius: 8px; 
-                font-weight: 600; 
-                color: {Theme.TEXT_MAIN.name()};
+        filter_bar.setSpacing(12)
+
+        # --- Segmented Pill Container ---
+        pill_frame = QFrame()
+        pill_frame.setFixedHeight(44)
+        pill_frame.setStyleSheet(f"""
+            QFrame {{
+                background: white;
+                border: 1px solid {Theme.BORDER.name()};
+                border-radius: 10px;
             }}
-            QPushButton:hover {{ background: {Theme.BG_MAIN.name()}; border-color: {Theme.BORDER_DARK.name()}; }}
-            QPushButton:checked {{ background: {Theme.PRIMARY.name()}; color: white; border-color: {Theme.PRIMARY.name()}; }}
+        """)
+        pill_layout = QHBoxLayout(pill_frame)
+        pill_layout.setContentsMargins(4, 4, 4, 4)
+        pill_layout.setSpacing(2)
+
+        seg_active = f"""
+            QPushButton {{
+                background: {Theme.PRIMARY.name()};
+                color: white;
+                border: none;
+                border-radius: 7px;
+                padding: 6px 18px;
+                font-weight: 700;
+                font-size: 13px;
+            }}
         """
-        
-        self.btn_today = QPushButton("Today")
+        seg_inactive = f"""
+            QPushButton {{
+                background: transparent;
+                color: {Theme.TEXT_MAIN.name()};
+                border: none;
+                border-radius: 7px;
+                padding: 6px 18px;
+                font-weight: 600;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{
+                background: {Theme.BG_MAIN.name()};
+                color: {Theme.PRIMARY.name()};
+            }}
+            QPushButton:checked {{
+                background: {Theme.PRIMARY.name()};
+                color: white;
+            }}
+        """
+
+        self.btn_today    = QPushButton("Today")
         self.btn_yesterday = QPushButton("Yesterday")
-        self.btn_week = QPushButton("This Week")
-        self.btn_month = QPushButton("This Month")
-        
+        self.btn_week     = QPushButton("This Week")
+        self.btn_month    = QPushButton("This Month")
+
         for b in [self.btn_today, self.btn_yesterday, self.btn_week, self.btn_month]:
             b.setCheckable(True)
-            b.setStyleSheet(btn_style)
-            filter_bar.addWidget(b)
-            
+            b.setStyleSheet(seg_inactive)
+            b.setCursor(Qt.PointingHandCursor)
+            pill_layout.addWidget(b)
+
         self.btn_today.clicked.connect(lambda: self.apply_filter("today"))
         self.btn_yesterday.clicked.connect(lambda: self.apply_filter("yesterday"))
         self.btn_week.clicked.connect(lambda: self.apply_filter("week"))
         self.btn_month.clicked.connect(lambda: self.apply_filter("month"))
 
-        filter_bar.addSpacing(20)
-        filter_bar.addWidget(QLabel("Range:", styleSheet=f"color: {Theme.TEXT_SUB.name()}; font-weight: bold;"))
-        
+        filter_bar.addWidget(pill_frame)
+        filter_bar.addStretch()
+
+        # --- Date Range Section ---
+        range_lbl = QLabel("Range:")
+        range_lbl.setStyleSheet(f"color: {Theme.TEXT_SUB.name()}; font-weight: 600; font-size: 13px;")
+        filter_bar.addWidget(range_lbl)
+
         self.start_date = QDateEdit(QDate.currentDate())
         self.start_date.setCalendarPopup(True)
         self.start_date.setFixedHeight(40)
         self.start_date.setFixedWidth(130)
-        self.start_date.setStyleSheet(f"padding: 5px; border: 1px solid {Theme.BORDER.name()}; border-radius: 8px; background: white; color: {Theme.TEXT_MAIN.name()};")
-        
+        self.start_date.setStyleSheet(f"padding: 5px 8px; border: 1px solid {Theme.BORDER.name()}; border-radius: 8px; background: white; color: {Theme.TEXT_MAIN.name()}; font-size: 13px;")
+
+        sep_lbl = QLabel("–")
+        sep_lbl.setStyleSheet(f"color: {Theme.TEXT_SUB.name()}; font-size: 15px;")
+
         self.end_date = QDateEdit(QDate.currentDate())
         self.end_date.setCalendarPopup(True)
         self.end_date.setFixedHeight(40)
         self.end_date.setFixedWidth(130)
-        self.end_date.setStyleSheet(f"padding: 5px; border: 1px solid {Theme.BORDER.name()}; border-radius: 8px; background: white; color: {Theme.TEXT_MAIN.name()};")
-        
+        self.end_date.setStyleSheet(f"padding: 5px 8px; border: 1px solid {Theme.BORDER.name()}; border-radius: 8px; background: white; color: {Theme.TEXT_MAIN.name()}; font-size: 13px;")
+
         self.go_btn = ModernButton("Apply Filters")
-        self.go_btn.setFixedWidth(140)
+        self.go_btn.setMinimumWidth(150)
         self.go_btn.setFixedHeight(40)
         self.go_btn.clicked.connect(lambda: self.apply_filter("custom"))
-        
+
         filter_bar.addWidget(self.start_date)
-        filter_bar.addWidget(QLabel("-", styleSheet=f"color: {Theme.TEXT_SUB.name()};"))
+        filter_bar.addWidget(sep_lbl)
         filter_bar.addWidget(self.end_date)
         filter_bar.addWidget(self.go_btn)
-        filter_bar.addStretch()
         
         main_layout.addLayout(filter_bar)
 
@@ -144,7 +193,8 @@ class FinancialOverviewWindow(QWidget):
                 border: none;
                 border-bottom: 2px solid {Theme.BORDER.name()};
                 font-weight: bold;
-                color: {Theme.TEXT_SUB.name()};
+                color: {Theme.TEXT_MAIN.name()};
+                font-size: 13px;
             }}
             QTableWidget::item {{
                 padding: 12px;

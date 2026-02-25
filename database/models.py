@@ -31,10 +31,12 @@ class Medicine(BaseModel):
             WHERE medicine_name LIKE %s 
             OR category LIKE %s 
             OR company LIKE %s 
+            OR strength LIKE %s
+            OR form LIKE %s
             OR barcode LIKE %s
         """
         pattern = f"%{term}%"
-        return cls.db.fetch_all(query, (pattern, pattern, pattern, pattern))
+        return cls.db.fetch_all(query, (pattern, pattern, pattern, pattern, pattern, pattern))
 
     @classmethod
     def find_by_barcode(cls, barcode):
@@ -43,18 +45,30 @@ class Medicine(BaseModel):
     @classmethod
     def create(cls, data):
         query = """
-            INSERT INTO inventory (medicine_name, category, company, batch_no, expiry_date, stock_qty, price, reorder_level)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO inventory (
+                medicine_name, category, company, barcode, batch_no, 
+                expiry_date, stock_qty, price, reorder_level,
+                strength, form, indication, side_effects, 
+                prescription_required, age_restriction
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         params = (
             data.get('medicine_name'),
             data.get('category'),
             data.get('company'),
+            data.get('barcode'),
             data.get('batch_no'),
             data.get('expiry_date'),
             data.get('stock_qty', 0),
             data.get('price', 0.0),
-            data.get('reorder_level', 10)
+            data.get('reorder_level', 10),
+            data.get('strength'),
+            data.get('form'),
+            data.get('indication'),
+            data.get('side_effects'),
+            data.get('prescription_required', False),
+            data.get('age_restriction')
         )
         cls.db.execute_query(query, params)
 
