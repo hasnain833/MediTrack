@@ -1,4 +1,4 @@
--- MediTrack Enterprise Pharmacy Management System
+-- D. Chemist Enterprise Pharmacy Management System
 -- Comprehensive Database Schema
 
 -- 1. Create Database

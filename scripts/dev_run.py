@@ -24,7 +24,7 @@ def main():
     root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     main_script = os.path.join(root_dir, 'main.py')
     
-    print(f"--- MediTrack Hot-Reload Started ---")
+    print(f"--- D. Chemist Hot-Reload Started ---")
     print(f"Watching directory: {root_dir}")
     print(f"Press Ctrl+C to stop.\n")
 

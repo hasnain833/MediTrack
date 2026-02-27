@@ -14,7 +14,7 @@ from services.template_service import TemplateService
 class ReportPreviewWindow(QWidget):
     def __init__(self, title, columns, data, parent=None):
         super().__init__(parent, Qt.Window)
-        self.setWindowTitle(f"{title} - MediTrack Reports")
+        self.setWindowTitle(f"{title} - D. Chemist Reports")
         self.resize(900, 800)
         self.setStyleSheet("background-color: #F1F5F9;")
         
@@ -147,7 +147,7 @@ class ReportPreviewWindow(QWidget):
         
         p_layout.addStretch()
         
-        p_footer = QLabel("Confidential System Report - MediTrack Enterprise")
+        p_footer = QLabel("Confidential System Report - D. Chemist Enterprise")
         p_footer.setAlignment(Qt.AlignCenter)
         p_footer.setStyleSheet("color: #94A3B8; font-size: 9px; border-top: 1px solid #F1F5F9; padding-top: 10px;")
         p_layout.addWidget(p_footer)

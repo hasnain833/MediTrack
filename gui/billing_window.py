@@ -153,7 +153,7 @@ class CartItem(QFrame):
 class BillingWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("MediTrack - Express POS")
+        self.setWindowTitle("D. Chemist - Express POS")
         self.setMinimumSize(1000, 700)
         self.resize(1150, 750)
         self.setStyleSheet(f"background: {Theme.BG_MAIN.name()};")

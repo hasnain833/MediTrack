@@ -6,7 +6,7 @@ def setup_logging():
     if not os.path.exists(LOGS_DIR):
         os.makedirs(LOGS_DIR)
 
-    log_file = os.path.join(LOGS_DIR, 'meditrack.log')
+    log_file = os.path.join(LOGS_DIR, 'D. Chemist.log')
 
     logging.basicConfig(
         filename=log_file,

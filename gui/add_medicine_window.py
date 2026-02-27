@@ -141,7 +141,7 @@ class ProgressIndicator(QWidget):
 class AddMedicineWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent, Qt.Window)
-        self.setWindowTitle("MediTrack Pro - Register Medicine")
+        self.setWindowTitle("D. Chemist Pro - Register Medicine")
         self.setMinimumSize(850, 650)
         self.resize(950, 720)
         self.setStyleSheet(f"background-color: {Theme.BG_MAIN.name()};")

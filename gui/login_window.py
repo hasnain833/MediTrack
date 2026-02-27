@@ -3,7 +3,7 @@ import bcrypt
 from PySide6.QtWidgets import (QApplication, QWidget, QLabel, QLineEdit, QPushButton, QCheckBox,
                              QVBoxLayout, QHBoxLayout, QMessageBox, QFrame, QGraphicsDropShadowEffect)
 from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QPoint, QEasingCurve, QRect, QEvent
-from PySide6.QtGui import QFont, QColor, QLinearGradient, QPalette, QBrush, QPainter, QPen
+from PySide6.QtGui import QFont, QColor, QLinearGradient, QPalette, QBrush, QPainter, QPen, QPixmap
 from database.connection import Database
 from gui.main_window import MainWindow
 
@@ -110,113 +110,155 @@ from gui.components import ModernButton, GlassCard
 class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("MediTrack - Enterprise Login")
-        self.setMinimumSize(900, 600)
-        self.resize(1000, 650)
-        self.setStyleSheet(f"background-color: {Theme.BG_MAIN.name()};")
+        self.setWindowTitle("D. Chemist - Enterprise Login")
+        self.setMinimumSize(1000, 650)
         self.db = Database()
         self.init_ui()
         from PySide6.QtCore import QTimer
         QTimer.singleShot(100, self.start_entrance_animation)
 
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Create the smooth blue/teal gradient background
+        gradient = QLinearGradient(0, 0, self.width(), self.height())
+        gradient.setColorAt(0, Theme.DEEP_NAVY)
+        gradient.setColorAt(0.5, Theme.ROYAL_BLUE)
+        gradient.setColorAt(1, Theme.PRIMARY_TEAL)
+        
+        painter.setBrush(gradient)
+        painter.setPen(Qt.NoPen)
+        painter.drawRect(self.rect())
+
     def init_ui(self):
-        main_layout = QHBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-
-        # Left Sidebar (Visual Branding)
-        self.sidebar = QFrame()
-        self.sidebar.setFixedWidth(400)
-        self.sidebar.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #1E293B, stop:1 #334155);
-            }
+        main_layout = QVBoxLayout(self)
+        main_layout.setAlignment(Qt.AlignCenter)
+        
+        # Frosted Glass Card
+        self.login_card = QFrame()
+        self.login_card.setObjectName("login_card")
+        self.login_card.setFixedWidth(460)
+        self.login_card.setStyleSheet(f"""
+            QFrame#login_card {{
+                background-color: rgba(255, 255, 255, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 30px;
+            }}
         """)
-        sidebar_layout = QVBoxLayout(self.sidebar)
-        sidebar_layout.setContentsMargins(50, 80, 50, 50)
         
-        logo_label = QLabel("M")
-        logo_label.setFixedSize(60, 60)
-        logo_label.setAlignment(Qt.AlignCenter)
-        logo_label.setStyleSheet(f"background-color: {Theme.PRIMARY.name()}; color: white; border-radius: 12px; font-size: 32px; font-weight: bold;")
-        sidebar_layout.addWidget(logo_label)
-        
-        sidebar_layout.addSpacing(30)
-        
-        self.app_name = QLabel("MediTrack")
-        self.app_name.setFont(Theme.get_font(42, QFont.ExtraLight))
-        self.app_name.setStyleSheet("color: white;")
-        sidebar_layout.addWidget(self.app_name)
-        
-        self.tagline = QLabel("The Future of Pharmacy\nManagement Systems")
-        self.tagline.setFont(Theme.get_font(18, QFont.Light))
-        self.tagline.setStyleSheet("color: #94A3B8;")
-        sidebar_layout.addWidget(self.tagline)
-        
-        sidebar_layout.addStretch()
-        
-        main_layout.addWidget(self.sidebar)
-
-        # Right Container (Login Form)
-        self.right_container = QWidget()
-        right_layout = QVBoxLayout(self.right_container)
-        right_layout.setAlignment(Qt.AlignCenter)
-        
-        self.login_card = GlassCard()
-        self.login_card.setFixedWidth(440)
+        # Apply shadow for depth
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(50)
+        shadow.setColor(QColor(0, 0, 0, 60))
+        shadow.setOffset(0, 15)
+        self.login_card.setGraphicsEffect(shadow)
         
         card_layout = QVBoxLayout(self.login_card)
-        card_layout.setContentsMargins(45, 50, 45, 50)
-        card_layout.setSpacing(20)
+        card_layout.setContentsMargins(50, 60, 50, 60)
+        card_layout.setSpacing(25)
         
-        welcome = QLabel("Welcome Back")
-        welcome.setFont(Theme.get_font(28, QFont.Bold))
-        welcome.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()};")
-        card_layout.addWidget(welcome)
-        
-        subtext = QLabel("Login to manage your pharmacy inventory")
-        subtext.setFont(Theme.get_font(14))
-        subtext.setStyleSheet(f"color: {Theme.TEXT_SUB.name()};")
-        card_layout.addWidget(subtext)
+        # Logo Icon Container
+        logo_container = QHBoxLayout()
+        logo_icon = QLabel()
+        logo_icon.setFixedSize(70, 70)
+        logo_pixmap = QPixmap("images/logo.png")
+        if not logo_pixmap.isNull():
+            logo_icon.setPixmap(logo_pixmap.scaled(45, 45, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        logo_icon.setAlignment(Qt.AlignCenter)
+        logo_icon.setStyleSheet("background: transparent; border: none;")
+        logo_container.addWidget(logo_icon)
+        card_layout.addLayout(logo_container)
         
         card_layout.addSpacing(10)
         
-        self.user_input = MaterialInput("Username")
+        welcome = QLabel("D. Chemist")
+        welcome.setAlignment(Qt.AlignCenter)
+        # Use Alex Brush with elegant script fallbacks
+        welcome.setFont(QFont(["Alex Brush", "Brush Script MT", "Gabriola", "Script MT Bold"], 42))
+        welcome.setStyleSheet("color: white; background: transparent; border: none;")
+        card_layout.addWidget(welcome)
+        
+        subtext = QLabel("Enter your credentials to continue")
+        subtext.setAlignment(Qt.AlignCenter)
+        subtext.setFont(Theme.get_font(13))
+        subtext.setStyleSheet("color: rgba(255, 255, 255, 0.7); background: transparent; border: none;")
+        card_layout.addWidget(subtext)
+        
+        card_layout.addSpacing(20)
+        
+        # Inputs with modern glass styling
+        self.user_input = QLineEdit()
+        self.user_input.setPlaceholderText("Username")
+        self.user_input.setFixedHeight(50)
+        self.user_input.setStyleSheet("""
+            QLineEdit {
+                background-color: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                padding: 0 15px;
+                color: white;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                background-color: rgba(255, 255, 255, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+            }
+        """)
         card_layout.addWidget(self.user_input)
         
-        self.pass_input = MaterialInput("Password", is_password=True)
+        self.pass_input = QLineEdit()
+        self.pass_input.setPlaceholderText("Password")
+        self.pass_input.setEchoMode(QLineEdit.Password)
+        self.pass_input.setFixedHeight(50)
+        self.pass_input.setStyleSheet(self.user_input.styleSheet())
         card_layout.addWidget(self.pass_input)
         
         card_layout.addSpacing(10)
         
         self.signin_btn = ModernButton("Sign In")
+        self.signin_btn.setFixedHeight(50)
+        self.signin_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Theme.PRIMARY_TEAL.name()};
+                color: {Theme.DEEP_NAVY.name()};
+                border-radius: 12px;
+                font-weight: bold;
+                font-size: 14px;
+            }}
+            QPushButton:hover {{
+                background-color: white;
+            }}
+        """)
         self.signin_btn.clicked.connect(self.login)
         card_layout.addWidget(self.signin_btn)
         
-        forgot_btn = QPushButton("Forgot your password?")
-        forgot_btn.setFont(Theme.get_font(13))
-        forgot_btn.setStyleSheet(f"color: {Theme.PRIMARY.name()}; border: none; background: transparent;")
+        forgot_btn = QPushButton("Having trouble signing in?")
+        forgot_btn.setFont(Theme.get_font(12))
+        forgot_btn.setStyleSheet("color: rgba(255, 255, 255, 0.5); border: none; background: transparent;")
         forgot_btn.setCursor(Qt.PointingHandCursor)
         card_layout.addWidget(forgot_btn, 0, Qt.AlignCenter)
         
-        right_layout.addWidget(self.login_card)
-        main_layout.addWidget(self.right_container)
+        main_layout.addWidget(self.login_card)
 
     def start_entrance_animation(self):
-        # Capture current stable position after layout activation
-        # This prevents the jump from (0,0)
         stable_pos = self.login_card.pos()
         self.anim = QPropertyAnimation(self.login_card, b"pos")
-        self.anim.setDuration(800)
-        self.anim.setStartValue(QPoint(stable_pos.x(), stable_pos.y() + 80))
+        self.anim.setDuration(1000)
+        self.anim.setStartValue(QPoint(stable_pos.x(), stable_pos.y() + 100))
         self.anim.setEndValue(stable_pos)
         self.anim.setEasingCurve(QEasingCurve.OutCubic)
+        
+        self.fade = QPropertyAnimation(self.login_card, b"windowOpacity")
+        self.fade.setDuration(1000)
+        self.fade.setStartValue(0)
+        self.fade.setEndValue(1)
+        
         self.anim.start()
 
-
     def login(self):
-        username = self.user_input.entry.text().strip()
-        password = self.pass_input.entry.text().strip()
+        username = self.user_input.text().strip()
+        password = self.pass_input.text().strip()
         
         if not username or not password:
             QMessageBox.warning(self, "Login Error", "Please enter both username and password.")
@@ -224,54 +266,39 @@ class LoginWindow(QWidget):
             
         try:
             from database.models import User
-            print(f"DEBUG: Login attempt for '{username}' (Password length: {len(password)})")
             user = User.find_by_username(username)
             
             if user:
                 stored_hash = user['password_hash']
                 role = user['role']
-                print(f"DEBUG: Found user. Role: {role}")
                 
                 if isinstance(stored_hash, str):
                     stored_hash = stored_hash.encode('utf-8')
                 
                 if bcrypt.checkpw(password.encode('utf-8'), stored_hash):
-                    print("DEBUG: Authentication successful.")
                     self.accept_login(username, role)
                 else:
-                    print(f"DEBUG: Auth failed for '{username}'. Password did not match.")
                     QMessageBox.critical(self, "Login Failed", "Invalid username or password.")
             else:
-                print(f"DEBUG: User '{username}' not found.")
                 QMessageBox.critical(self, "Login Failed", "Invalid username or password.")
         except Exception as e:
-            import traceback
-            print(f"CRITICAL: Login crash:\n{traceback.format_exc()}")
             QMessageBox.critical(self, "Error", f"An internal error occurred: {e}")
 
     def accept_login(self, username, role):
         try:
-            print(f"DEBUG: accept_login called with role: {role}")
-            # Ensure role is string for comparison
             if hasattr(role, 'decode'):
                 role = role.decode('utf-8')
             
             if role == "cashier":
-                print("DEBUG: Redirecting to Billing Terminal...")
                 from gui.billing_window import BillingWindow
                 self.bill_win = BillingWindow()
                 self.bill_win.show()
             else:
-                print("DEBUG: Redirecting to MainWindow...")
                 self.main_window = MainWindow(username, role)
                 self.main_window.show()
             
-            print("DEBUG: Closing Login Window...")
             self.close()
         except Exception as e:
-            import traceback
-            error_msg = traceback.format_exc()
-            print(f"DEBUG: Redirection Crash:\n{error_msg}")
             QMessageBox.critical(self, "Redirection Error", f"Could not open application window.\n\n{e}")
 
 if __name__ == "__main__":

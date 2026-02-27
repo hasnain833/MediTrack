@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxL
                              QMessageBox, QGraphicsDropShadowEffect, QApplication, 
                              QLineEdit, QScrollArea, QStackedWidget)
 from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, QPoint, QRect, QTimer
-from PySide6.QtGui import QFont, QColor, QPalette, QBrush, QPainter, QPen, QLinearGradient, QPainterPath
+from PySide6.QtGui import QFont, QColor, QPalette, QBrush, QPainter, QPen, QLinearGradient, QPainterPath, QPixmap
 
 class Sparkline(QWidget):
     def __init__(self, data, color="#2C7878", parent=None):
@@ -147,8 +147,8 @@ class AreaChart(QWidget):
         
         path = QPainterPath()
         gradient = QLinearGradient(0, padding, 0, h - padding)
-        gradient.setColorAt(0, QColor(44, 120, 120, 150))
-        gradient.setColorAt(1, QColor(44, 120, 120, 0))
+        gradient.setColorAt(0, QColor(Theme.PRIMARY_TEAL.red(), Theme.PRIMARY_TEAL.green(), Theme.PRIMARY_TEAL.blue(), 150))
+        gradient.setColorAt(1, QColor(Theme.PRIMARY_TEAL.red(), Theme.PRIMARY_TEAL.green(), Theme.PRIMARY_TEAL.blue(), 0))
         
         points = []
         for i, val in enumerate(self.data):
@@ -168,14 +168,14 @@ class AreaChart(QWidget):
         
         painter.fillPath(fill_path, gradient)
         
-        painter.setPen(QPen(QColor("#2C7878"), 3))
+        painter.setPen(QPen(Theme.PRIMARY_TEAL, 3))
         painter.drawPath(path)
         
         if self.hover_index != -1:
             p = points[self.hover_index]
             painter.setBrush(QColor("white"))
             painter.drawEllipse(p, 6, 6)
-            painter.setPen(QPen(QColor("#2C7878"), 2))
+            painter.setPen(QPen(Theme.PRIMARY_TEAL, 2))
             painter.drawEllipse(p, 6, 6)
             
             painter.setPen(Qt.NoPen)
@@ -236,7 +236,7 @@ from gui.components import ModernButton, GlassCard as GlobalGlassCard, SidebarBu
 class MainWindow(QWidget):
     def __init__(self, current_user="admin", user_role="admin"):
         super().__init__()
-        self.setWindowTitle("MediTrack - Dashboard")
+        self.setWindowTitle("D. Chemist - Dashboard")
         self.setMinimumSize(1024, 720) # Allows resizing but sets a sane floor
         self.resize(1100, 750) # Standard initial size
         self.current_user = current_user
@@ -250,24 +250,38 @@ class MainWindow(QWidget):
         main_layout.setSpacing(0)
 
         # --- Sidebar Navigation ---
-        self.sidebar = QFrame()
-        self.sidebar.setFixedWidth(260)
-        self.sidebar.setStyleSheet(f"background-color: white; border-right: 1px solid {Theme.BORDER.name()};")
+        class GradientSidebar(QFrame):
+            def paintEvent(self, event):
+                painter = QPainter(self)
+                painter.setRenderHint(QPainter.Antialiasing)
+                grad = QLinearGradient(0, 0, 0, self.height())
+                grad.setColorAt(0, Theme.DEEP_NAVY)
+                grad.setColorAt(1, Theme.ROYAL_BLUE)
+                painter.setBrush(grad)
+                painter.setPen(Qt.NoPen)
+                painter.drawRect(self.rect())
+
+        self.sidebar = GradientSidebar()
+        self.sidebar.setFixedWidth(280)
         sidebar_layout = QVBoxLayout(self.sidebar)
-        sidebar_layout.setContentsMargins(20, 30, 20, 30)
+        sidebar_layout.setContentsMargins(20, 40, 20, 40)
         sidebar_layout.setSpacing(10)
 
         # Sidebar Logo
         logo_container = QHBoxLayout()
-        logo_icon = QLabel("M")
-        logo_icon.setFixedSize(32, 32)
+        logo_container.setContentsMargins(20, 0, 20, 0)
+        logo_icon = QLabel()
+        logo_icon.setFixedSize(45, 45)
+        logo_pix = QPixmap("images/logo.png")
+        if not logo_pix.isNull():
+            logo_icon.setPixmap(logo_pix.scaled(30, 30, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         logo_icon.setAlignment(Qt.AlignCenter)
-        logo_icon.setStyleSheet(f"background-color: {Theme.PRIMARY.name()}; color: white; border-radius: 8px; font-weight: bold; font-size: 16px;")
+        logo_icon.setStyleSheet("background: transparent; border: none;")
         logo_container.addWidget(logo_icon)
         
-        logo_text = QLabel("MediTrack")
-        logo_text.setFont(Theme.get_font(20, QFont.Bold))
-        logo_text.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()};")
+        logo_text = QLabel("D. Chemist")
+        logo_text.setFont(QFont(["Alex Brush", "Brush Script MT", "Gabriola", "Script MT Bold"], 26))
+        logo_text.setStyleSheet("color: white; background: transparent; border: none;")
         logo_container.addWidget(logo_text)
         logo_container.addStretch()
         sidebar_layout.addLayout(logo_container)
@@ -299,34 +313,12 @@ class MainWindow(QWidget):
         
         sidebar_layout.addStretch()
         
-        # User Profile Mini-Card at bottom of sidebar
-        profile_card = QFrame()
-        profile_card.setFixedHeight(60)
-        profile_card.setStyleSheet(f"background-color: white; border: none; border-radius: 12px;")
-        p_layout = QHBoxLayout(profile_card)
-        p_layout.setContentsMargins(10, 5, 10, 5)
+        # Bottom Navigation
+        settings_btn = SidebarButton("Settings")
+        sidebar_layout.addWidget(settings_btn)
         
-        avatar = QLabel(self.current_user[0].upper())
-        avatar.setFixedSize(35, 35)
-        avatar.setAlignment(Qt.AlignCenter)
-        avatar.setStyleSheet(f"background-color: {Theme.PRIMARY.name()}; color: white; border-radius: 17px; font-weight: bold;")
-        p_layout.addWidget(avatar)
-        
-        u_info = QVBoxLayout()
-        u_info.setSpacing(0)
-        u_name = QLabel(self.current_user)
-        u_name.setFont(Theme.get_font(13, QFont.Bold))
-        u_role = QLabel(self.user_role)
-        u_role.setFont(Theme.get_font(10))
-        u_role.setStyleSheet(f"color: {Theme.TEXT_SUB.name()};")
-        u_info.addWidget(u_name)
-        u_info.addWidget(u_role)
-        p_layout.addLayout(u_info)
-        
-        sidebar_layout.addWidget(profile_card)
-        
-        logout_btn = SidebarButton("Logout")
-        logout_btn.clicked.connect(self.handle_logout)
+        logout_btn = SidebarButton("Log out")
+        logout_btn.clicked.connect(self.logout)
         sidebar_layout.addWidget(logout_btn)
 
         main_layout.addWidget(self.sidebar)
@@ -338,21 +330,51 @@ class MainWindow(QWidget):
         
         # Header (Now dynamic titles and actions)
         self.header = QFrame()
-        self.header.setFixedHeight(50)
-        self.header.setStyleSheet(f"background-color: white; border: none;")
+        self.header.setFixedHeight(80)
+        self.header.setStyleSheet("background-color: white; border-bottom: 1px solid #F1F5F9;")
         header_layout = QHBoxLayout(self.header)
         header_layout.setContentsMargins(40, 0, 40, 0)
         
-        self.header_title = QLabel("Dashboard")
-        self.header_title.setFont(Theme.get_font(18, QFont.Bold))
-        self.header_title.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()};")
-        header_layout.addWidget(self.header_title)
+        # Search Bar
+        search_container = QFrame()
+        search_container.setFixedWidth(350)
+        search_container.setStyleSheet(f"background-color: white; border-radius: 20px; border: 1px solid {Theme.BORDER.name()};")
+        s_layout = QHBoxLayout(search_container)
+        s_layout.setContentsMargins(15, 0, 15, 0)
+        
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search items, transactions...")
+        self.search_input.setStyleSheet("border: none; background: transparent; height: 35px;")
+        self.search_input.setFont(Theme.get_font(12))
+        s_layout.addWidget(self.search_input)
+        header_layout.addWidget(search_container)
         
         header_layout.addStretch()
         
-        self.header_actions = QHBoxLayout()
-        self.header_actions.setSpacing(15)
-        header_layout.addLayout(self.header_actions)
+        # Profile Section
+        profile_header = QWidget()
+        ph_layout = QHBoxLayout(profile_header)
+        ph_layout.setSpacing(15)
+        
+        u_text = QVBoxLayout()
+        u_text.setSpacing(0)
+        u_name_h = QLabel(self.current_user)
+        u_name_h.setFont(Theme.get_font(13, QFont.Bold))
+        u_name_h.setStyleSheet(f"color: {Theme.TEXT_MAIN.name()};")
+        u_role_h = QLabel("Welcome Back")
+        u_role_h.setFont(Theme.get_font(10))
+        u_role_h.setStyleSheet(f"color: {Theme.TEXT_SUB.name()};")
+        u_text.addWidget(u_name_h)
+        u_text.addWidget(u_role_h)
+        ph_layout.addLayout(u_text)
+        
+        avatar_h = QLabel(self.current_user[0].upper())
+        avatar_h.setFixedSize(40, 40)
+        avatar_h.setAlignment(Qt.AlignCenter)
+        avatar_h.setStyleSheet(f"background-color: #E2E8F0; color: #1E293B; border-radius: 20px; font-weight: bold;")
+        ph_layout.addWidget(avatar_h)
+        
+        header_layout.addWidget(profile_header)
         
         self.content_stack_layout.addWidget(self.header)
 
@@ -361,10 +383,10 @@ class MainWindow(QWidget):
         self.scroll.setWidgetResizable(True)
         self.scroll.setStyleSheet("border: none; background: transparent;")
         self.scroll_content = QWidget()
-        self.scroll_content.setStyleSheet(f"background-color: {Theme.BG_MAIN.name()};")
+        self.scroll_content.setStyleSheet("background-color: #F8FAFC;") # Softer premium background
         self.body_layout = QVBoxLayout(self.scroll_content)
-        self.body_layout.setContentsMargins(25, 15, 25, 20)
-        self.body_layout.setSpacing(20)
+        self.body_layout.setContentsMargins(40, 30, 40, 40)
+        self.body_layout.setSpacing(35)
         
         self.scroll.setWidget(self.scroll_content)
         
@@ -398,19 +420,11 @@ class MainWindow(QWidget):
         self.update_header(index)
 
     def update_header(self, index):
-        # Clear current actions
-        while self.header_actions.count():
-            item = self.header_actions.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
-        titles = ["Dashboard", "Inventory Management", "Point of Sale", "Financial Overview", "System Users"]
-        self.header_title.setText(titles[index] if index < len(titles) else "")
-
-        # Let modules register their own actions in the header
-        current_view = self.view_stack.currentWidget()
-        if hasattr(current_view, 'setup_header_actions'):
-            current_view.setup_header_actions(self.header_actions)
+        # We can still update the "Welcome Back" or profile title if needed
+        # but for now let's just ensure we don't crash and maybe update the search placeholder
+        placeholders = ["Search items...", "Search medicines...", "Search bills...", "Search financials...", "Search users..."]
+        if hasattr(self, 'search_input') and index < len(placeholders):
+            self.search_input.setPlaceholderText(placeholders[index])
 
     def show_dashboard(self):
         self._switch_view(0, 'dashboard_view', None)
@@ -441,91 +455,91 @@ class MainWindow(QWidget):
             item = self.body_layout.takeAt(0)
             if item.widget(): item.widget().deleteLater()
             
-        self.body_layout.addWidget(SectionHeader("Executive Overview"))
+        from gui.components import EnhancedMetricCard
         
         # Metrics Row
         metrics_layout = QHBoxLayout()
-        metrics_layout.setSpacing(20)
+        metrics_layout.setSpacing(25)
         
-        try:
-            from database.models import Sale, Medicine
-            stats = Sale.get_todays_stats()
-            low_stock = Medicine.get_low_stock_count()
-        except Exception:
-            stats = {'revenue': 0, 'orders': 0}
-            low_stock = 0
-
         metrics = [
-            ("Today's Revenue", f"Rs.{stats['revenue']:,}", [2000, 4500, 3200, stats['revenue']], "#10B981"),
-            ("Orders", str(stats['orders']), [5, 12, 8, stats['orders']], "#6366F1"),
-            ("Low Stock", str(low_stock), [4, 2, 6, low_stock], "#F59E0B")
+            ("Total Profit", "Rs. 1250.00", "+12.5%/Month", Theme.ROYAL_BLUE),
+            ("Total Sale", "Rs. 1250.00", "+18%/Month", Theme.PRIMARY_TEAL),
+            ("Low Stock", "752", "-5.2%", Theme.ERROR),
+            ("System Users", "355", "+12", Theme.INFO)
         ]
         
-        for title, val, data, color in metrics:
-            card = GlassCard(title, val, data, color)
+        for title, val, change, color in metrics:
+            card = EnhancedMetricCard(title, val, change, color)
             metrics_layout.addWidget(card)
         self.body_layout.addLayout(metrics_layout)
         
         # Charts Row
         charts_row = QHBoxLayout()
-        analytics_card = self.create_container_card("Sales Performance", 320)
-        area = AreaChart([4500, 5200, 4800, 6100, 5900, 7200, 6800, 8100, 7500, 9200])
-        analytics_card.layout().addWidget(area)
-        charts_row.addWidget(analytics_card, 2)
+        charts_row.setSpacing(25)
         
-        donut_card = self.create_container_card("Inventory Split", 320)
-        donut = DonutChart([("Stock", 70, "#2C7878"), ("Low", 20, "#F59E0B"), ("Out", 10, "#EF4444")])
-        donut_card.layout().addWidget(donut)
-        charts_row.addWidget(donut_card, 1)
+        # Big Sales Chart
+        sales_container = self.create_container_card("Total Sale", 400)
+        sales_container.layout().setContentsMargins(0, 0, 0, 0)
+        area = AreaChart([4500, 5200, 4800, 6100, 5900, 7200, 6800, 8100, 7500, 9200])
+        sales_container.layout().addWidget(area)
+        charts_row.addWidget(sales_container, 2)
+        
+        # Profit Chart (or Bar chart)
+        profit_container = self.create_container_card("Total Profit", 400)
+        # For now reusing AreaChart but could be a BarChart
+        area2 = AreaChart([3000, 4000, 3500, 5000, 4500, 6000])
+        profit_container.layout().addWidget(area2)
+        charts_row.addWidget(profit_container, 1)
         
         self.body_layout.addLayout(charts_row)
         
-        # Recent Activity Table
-        self.body_layout.addWidget(SectionHeader("Recent Transactions"))
-        trans_card = QFrame()
-        trans_card.setStyleSheet(f"background-color: white; border-radius: 12px; border: none;")
-        tl = QVBoxLayout(trans_card)
-        tl.setContentsMargins(10, 10, 10, 10)
+        # Transactions and Legend Row
+        bottom_row = QHBoxLayout()
+        bottom_row.setSpacing(25)
         
-        self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["ID", "Customer", "Date", "Amount", "Status"])
-        self.table.setStyleSheet(f"QTableWidget {{ border: none; background: white; }} QHeaderView::section {{ background: {Theme.BG_MAIN.name()}; padding: 10px; border: none; font-weight: bold; font-size: 13px; color: {Theme.TEXT_MAIN.name()}; }} QTableWidget::item {{ color: {Theme.TEXT_MAIN.name()}; padding: 8px; }}")
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.verticalHeader().setVisible(False)
-        self.populate_table()
-        tl.addWidget(self.table)
-        self.body_layout.addWidget(trans_card)
-
-    def populate_table(self):
+        # Transaction Table
+        trans_card = self.create_container_card("Transaction", 350)
+        table = QTableWidget(3, 5)
+        table.setHorizontalHeaderLabels(["Order ID", "Date", "Medicine Name", "Quantity", "Price"])
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.verticalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setStyleSheet("""
+            QTableWidget {
+                border: none;
+                background: transparent;
+            }
+            QHeaderView::section {
+                background-color: transparent;
+                border: none;
+                color: #6B7280;
+                font-weight: bold;
+                padding: 10px;
+            }
+        """)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        
+        # Dummy data
         data = [
-            ["#TX1285", "John Alexander", "Feb 19, 10:24 AM", "Rs.1,250", "Completed"],
-            ["#TX1286", "Sarah Miller", "Feb 19, 09:15 AM", "Rs.850", "Pending"],
-            ["#TX1287", "Robert King", "Feb 18, 05:30 PM", "Rs.14,200", "Refunded"],
-            ["#TX1288", "Emma Watson", "Feb 18, 04:12 PM", "Rs.520", "Completed"],
-            ["#TX1289", "Michael Chen", "Feb 18, 02:45 PM", "Rs.3,100", "Completed"]
+            ("025636", "12-08-26", "Doxiva 200mg", "2", "Rs. 25"),
+            ("025637", "12-08-26", "Monus 10mg", "1", "Rs. 17"),
+            ("052366", "12-08-26", "Revortil 2mg", "1", "Rs. 15")
         ]
-        self.table.setRowCount(len(data))
-        for row, r_data in enumerate(data):
-            for col, val in enumerate(r_data):
-                if col == 4:
-                    badge = QWidget()
-                    b_layout = QHBoxLayout(badge)
-                    b_layout.setContentsMargins(10, 5, 10, 5)
-                    dot = QLabel("●")
-                    color = "#10B981" if val == "Completed" else "#F59E0B" if val == "Pending" else "#EF4444"
-                    dot.setStyleSheet(f"color: {color}; font-size: 10px; border: none;")
-                    b_layout.addWidget(dot)
-                    text = QLabel(val)
-                    text.setFont(Theme.get_font(9, QFont.Medium))
-                    text.setStyleSheet(f"color: {color}; border: none;")
-                    b_layout.addWidget(text)
-                    b_layout.addStretch()
-                    self.table.setCellWidget(row, col, badge)
-                else:
-                    item = QTableWidgetItem(val)
-                    item.setFlags(Qt.ItemIsEnabled)
-                    self.table.setItem(row, col, item)
+        for r, row in enumerate(data):
+            for c, val in enumerate(row):
+                table.setItem(r, c, QTableWidgetItem(val))
+        
+        trans_card.layout().addWidget(table)
+        bottom_row.addWidget(trans_card, 2)
+        
+        # Demanded Drugs
+        drugs_card = self.create_container_card("Demanded Drugs", 350)
+        donut = DonutChart([("Doxiva", 40, "#F43F5E"), ("Exium", 20, "#6366F1"), ("Paracetomol", 20, "#EAB308"), ("Sef", 20, "#2563EB")])
+        drugs_card.layout().addWidget(donut)
+        bottom_row.addWidget(drugs_card, 1)
+        
+        self.body_layout.addLayout(bottom_row)
+
 
     def handle_logout(self):
         reply = QMessageBox.question(self, 'Logout', 'Are you sure you want to logout?',
@@ -545,7 +559,7 @@ class MainWindow(QWidget):
     def create_container_card(self, title, fixed_h):
         card = QFrame()
         if fixed_h > 0: card.setFixedHeight(fixed_h)
-        card.setStyleSheet("background: white; border-radius: 16px; border: none;")
+        card.setStyleSheet("background: white; border-radius: 20px; border: none;")
         
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(30)

@@ -10,7 +10,7 @@ DATABASE_CONFIG = {
 }
 
 
-APP_NAME = "MediTrack"  
+APP_NAME = "D. Chemist"  
 APP_VERSION = "1.0.0"
 COMPANY_NAME = "D. Chemist"
 

@@ -104,7 +104,7 @@ class InvoiceTable(QFrame):
 class BillPreviewWindow(QWidget):
     def __init__(self, master, bill_data):
         super().__init__(None, Qt.Window)
-        self.setWindowTitle("Professional Invoice - MediTrack")
+        self.setWindowTitle("Professional Invoice - D. Chemist")
         self.resize(850, 950)
         self.setStyleSheet(f"background-color: {Theme.BG_MAIN.name()};")
         self.bill_data = bill_data

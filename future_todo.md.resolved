@@ -1,0 +1,29 @@
+# D. Chemist - Technical TODO List
+
+This file tracks the pending enhancements and data synchronization tasks to be implemented in future sessions.
+
+## 🟢 Priority 1: Data Synchronization & Live Logic
+- [ ] **Live Dashboard Metrics**:
+    - Replace static lists in [main_window.py](file:///c:/Users/Pc/OneDrive/Desktop/MediTrack/gui/main_window.py) with real database queries.
+    - Implement `Sale.get_total_stats()` in [models.py](file:///c:/Users/Pc/OneDrive/Desktop/MediTrack/database/models.py) for all-time revenue/profit.
+    - Implement `Medicine.get_low_stock_count()` integration for the dashboard.
+- [ ] **Inventory-Sale Lifecycle**:
+    - Verify `Medicine.update_stock` successfully decrements quantities in the database.
+    - Implement a Signal/Slot or callback system to refresh the Inventory and Dashboard views immediately after a sale is completed in the [BillingWindow](file:///c:/Users/Pc/OneDrive/Desktop/MediTrack/gui/billing_window.py#153-539).
+
+## 🟡 Priority 2: Functional Enhancements
+- [ ] **Document Export System**:
+    - Integrate the existing `pdf_generator` and `excel_exporter` services into the Reporting UI.
+    - Implement "Export to PDF" for Bill Previews.
+- [ ] **User Profile Management**:
+    - Add functionality for users to change passwords and update profile information.
+- [ ] **Multi-Payment Support**:
+    - Update the Billing UI to allow selection between Cash, Card, and UPI.
+
+## 🔵 Priority 3: UI/UX & Polish
+- [ ] **Advanced Filtering**: Added multi-select filters for category and company in the Inventory view.
+- [ ] **Onboarding Completion**: Finalize the setup wizard for initial pharmacy configuration.
+- [ ] **Dark Mode Refinement**: Ensure all custom components support a secondary high-contrast dark theme.
+
+---
+*Last Updated: 2026-02-27*
